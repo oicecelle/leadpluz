@@ -14,7 +14,7 @@ import {
   LogOut,
   User,
   AlertTriangle,
-  Bolt,
+  Zap,
   HelpCircle,
   Shield
 } from "lucide-react";
@@ -153,11 +153,13 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         {/* Sidebar - largura fixa 220px, altura 100vh */}
         <aside className="w-[220px] h-screen bg-[#0a0a0f] border-r border-[rgba(139,69,212,0.12)] flex flex-col justify-between flex-shrink-0 sticky top-0 z-30 select-none">
           <div>
-            {/* Logo + Bolt Icon */}
+            {/* Logo + Zap Icon */}
             <div className="p-5 flex items-center justify-between relative">
               <div className="flex items-center space-x-2">
-                <span className="text-[15px] font-bold tracking-[-0.5px] text-white">LEADPLUZ</span>
-                <Bolt className="w-4 h-4 text-[#a855f7] fill-[#a855f7]" />
+                <Zap className="w-5 h-5 text-purple-400 fill-purple-400/20" />
+                <span className="text-sm font-extrabold tracking-widest text-white uppercase font-sans">
+                  LEAD<span className="text-purple-400">PLUZ</span>
+                </span>
                 {isAdminMode && (
                   <span className="text-[9px] bg-[#fbbf24] text-black px-1.5 py-0.5 rounded font-extrabold tracking-wider uppercase ml-1 animate-pulse">
                     ADMIN

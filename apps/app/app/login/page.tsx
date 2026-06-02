@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@repo/supabase";
 import { useRouter } from "next/navigation";
-import { Check, Bolt, ArrowRight } from "lucide-react";
+import { Check, Zap, ArrowRight } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -95,8 +95,10 @@ export default function LoginPage() {
 
         {/* Top brand */}
         <div className="flex items-center space-x-2 relative z-10">
-          <span className="text-[16px] font-bold tracking-[-0.5px] text-white">LEADPLUZ</span>
-          <Bolt className="w-4 h-4 text-[#a855f7] fill-[#a855f7]" />
+          <Zap className="w-5 h-5 text-purple-400 fill-purple-400/20" />
+          <span className="text-sm font-extrabold tracking-widest text-white uppercase font-sans">
+            LEAD<span className="text-purple-400">PLUZ</span>
+          </span>
         </div>
 
         {/* Mid logo & benefits */}
@@ -136,8 +138,10 @@ export default function LoginPage() {
       <div className="flex-1 bg-[#050508] flex items-center justify-center p-6 relative">
         {/* Small mobile branding header */}
         <div className="absolute top-6 left-6 flex md:hidden items-center space-x-2">
-          <span className="text-[15px] font-bold text-white">LEADPLUZ</span>
-          <Bolt className="w-4 h-4 text-[#a855f7] fill-[#a855f7]" />
+          <Zap className="w-5 h-5 text-purple-400 fill-purple-400/20" />
+          <span className="text-sm font-extrabold tracking-widest text-white uppercase font-sans">
+            LEAD<span className="text-purple-400">PLUZ</span>
+          </span>
         </div>
 
         <div className="w-full max-w-[400px] space-y-6">
