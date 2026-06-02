@@ -40,6 +40,7 @@ export default function DisparosPage() {
   // WhatsApp connection states
   const [instanceStatus, setInstanceStatus] = useState<"disconnected" | "connecting" | "connected">("disconnected");
   const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
+  const [isPolling, setIsPolling] = useState(false);
 
   // Broadcast configuration
   const [filterStatus, setFilterStatus] = useState("all");
@@ -76,6 +77,75 @@ export default function DisparosPage() {
   const [inboxes, setInboxes] = useState<string[]>([]);
   const [selectedInbox, setSelectedInbox] = useState("");
 
+  const checkRealStatus = async (token: string, baseUrl: string, userId: string) => {
+    try {
+      const res = await fetch(`${baseUrl}/instance/status`, {
+        headers: { token }
+      });
+      if (res.status === 200) {
+        const data = await res.json();
+        const status = data.instance?.status;
+        const instId = data.instance?.id;
+        
+        if (status === "connected") {
+          setInstanceStatus("connected");
+          setQrCodeUrl(null);
+          setIsPolling(false);
+          await (supabase.from("profiles") as any)
+            .update({
+              uazapi_instance_status: "connected",
+              uazapi_instance_id: instId,
+              uazapi_qr_code: null
+            })
+            .eq("id", userId);
+          return "connected";
+        } else {
+          // Instância existe mas não está conectada. Vamos pegar o QR Code se estiver disponível
+          const qrcode = data.instance?.qrcode || data.instance?.qr || data.qrcode || "";
+          if (qrcode) {
+            setInstanceStatus("connecting");
+            const formattedQr = qrcode.startsWith("data:image") ? qrcode : `data:image/png;base64,${qrcode}`;
+            setQrCodeUrl(formattedQr);
+            await (supabase.from("profiles") as any)
+              .update({
+                uazapi_instance_status: "connecting",
+                uazapi_qr_code: formattedQr
+              })
+              .eq("id", userId);
+            return "connecting";
+          } else {
+            setInstanceStatus("disconnected");
+            setQrCodeUrl(null);
+            await (supabase.from("profiles") as any)
+              .update({
+                uazapi_instance_status: "disconnected",
+                uazapi_instance_id: null,
+                uazapi_qr_code: null
+              })
+              .eq("id", userId);
+            return "disconnected";
+          }
+        }
+      } else {
+        // Credenciais inválidas ou erro
+        setInstanceStatus("disconnected");
+        setQrCodeUrl(null);
+        setIsPolling(false);
+        await (supabase.from("profiles") as any)
+          .update({
+            uazapi_instance_status: "disconnected",
+            uazapi_instance_id: null,
+            uazapi_qr_code: null
+          })
+          .eq("id", userId);
+        return "disconnected";
+      }
+    } catch (err) {
+      console.error("Erro ao verificar status na Uazapi:", err);
+      return null;
+    }
+  };
+
   useEffect(() => {
     const loadProfileData = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -84,11 +154,35 @@ export default function DisparosPage() {
           .select("*")
           .eq("id", session.user.id)
           .maybeSingle();
-        setProfile(prof);
 
         if (prof) {
-          setInstanceStatus(prof.uazapi_instance_status || "disconnected");
-          setQrCodeUrl(prof.uazapi_qr_code || null);
+          let currentToken = prof.uazapi_token;
+          let currentBaseUrl = prof.uazapi_base_url;
+
+          // Auto-preencher credenciais se nulo
+          if (!currentToken || !currentBaseUrl) {
+            currentToken = currentToken || "5d04747c-dff1-42b9-a70d-1baadb580093";
+            currentBaseUrl = currentBaseUrl || "https://customix.uazapi.com";
+            await (supabase.from("profiles") as any)
+              .update({
+                uazapi_token: currentToken,
+                uazapi_base_url: currentBaseUrl
+              })
+              .eq("id", session.user.id);
+            prof.uazapi_token = currentToken;
+            prof.uazapi_base_url = currentBaseUrl;
+          }
+
+          setProfile(prof);
+          
+          // Verificar status real imediatamente
+          const status = await checkRealStatus(currentToken, currentBaseUrl, session.user.id);
+          
+          // Se estava conectando/gerando QR, ativa o polling
+          if (status === "connecting" || prof.uazapi_instance_status === "connecting") {
+            setIsPolling(true);
+          }
+
           setChatwootConnected(!!prof.chatwoot_account_id);
           setChatwootUrl(prof.chatwoot_url || "");
         }
@@ -97,6 +191,30 @@ export default function DisparosPage() {
     };
     loadProfileData();
   }, []);
+
+  // Hook de polling para verificar o status e o QR Code periodicamente
+  useEffect(() => {
+    if (!isPolling || !profile?.uazapi_token || !profile?.uazapi_base_url) return;
+
+    const intervalId = setInterval(async () => {
+      await checkRealStatus(profile.uazapi_token, profile.uazapi_base_url, profile.id);
+    }, 3000);
+
+    // Timeout de 2 minutos para parar o polling
+    const timeoutId = setTimeout(() => {
+      clearInterval(intervalId);
+      setIsPolling(false);
+      if (instanceStatus === "connecting") {
+        setInstanceStatus("disconnected");
+        setQrCodeUrl(null);
+      }
+    }, 120000);
+
+    return () => {
+      clearInterval(intervalId);
+      clearTimeout(timeoutId);
+    };
+  }, [isPolling, profile, instanceStatus]);
 
   useEffect(() => {
     if (!profile) return;
@@ -268,47 +386,69 @@ export default function DisparosPage() {
   }, [profile, filterStatus, filterCategory, limitCount]);
 
   const handleConnectWhatsApp = async () => {
+    if (!profile?.uazapi_token || !profile?.uazapi_base_url) {
+      alert("Credenciais da Uazapi não configuradas.");
+      return;
+    }
     setInstanceStatus("connecting");
-    setQrCodeUrl("https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=LEADPLUZ-Uazapi-Connection-Simulation");
+    setQrCodeUrl(null);
 
-    setTimeout(async () => {
-      if (!profile) return;
-      try {
+    try {
+      // Disparar conexão na Uazapi
+      const res = await fetch(`${profile.uazapi_base_url}/instance/connect`, {
+        method: "POST",
+        headers: {
+          "token": profile.uazapi_token,
+          "Content-Type": "application/json"
+        }
+      });
+
+      if (res.status === 200) {
+        // Começar polling para pegar o status / QR Code
+        setIsPolling(true);
+      } else {
+        const errText = await res.text();
+        console.error("Erro ao conectar Uazapi:", res.status, errText);
+        alert("Erro ao iniciar conexão na Uazapi. Código: " + res.status);
+        setInstanceStatus("disconnected");
+      }
+    } catch (err: any) {
+      console.error("Erro ao conectar:", err.message);
+      alert("Erro ao conectar: " + err.message);
+      setInstanceStatus("disconnected");
+    }
+  };
+
+  const handleDisconnectWhatsApp = async () => {
+    if (!profile?.uazapi_token || !profile?.uazapi_base_url) return;
+    try {
+      // Chamar desconexão na Uazapi
+      const res = await fetch(`${profile.uazapi_base_url}/instance/disconnect`, {
+        method: "POST",
+        headers: {
+          "token": profile.uazapi_token,
+          "Content-Type": "application/json"
+        }
+      });
+
+      if (res.status === 200 || res.status === 405) {
+        // Atualizar no Supabase
         const { error } = await (supabase
           .from("profiles") as any)
           .update({
-            uazapi_instance_status: "connected",
-            uazapi_instance_id: "inst_" + Math.floor(Math.random() * 10000)
+            uazapi_instance_status: "disconnected",
+            uazapi_instance_id: null,
+            uazapi_qr_code: null
           })
           .eq("id", profile.id);
 
         if (error) throw error;
-        setInstanceStatus("connected");
-        setQrCodeUrl(null);
-      } catch (err: any) {
-        console.error("Erro ao conectar:", err.message);
-        alert("Erro ao conectar: " + err.message);
         setInstanceStatus("disconnected");
         setQrCodeUrl(null);
+        setIsPolling(false);
+      } else {
+        alert("Erro ao desconectar na Uazapi. Código: " + res.status);
       }
-    }, 2000);
-  };
-
-  const handleDisconnectWhatsApp = async () => {
-    if (!profile) return;
-    try {
-      const { error } = await (supabase
-        .from("profiles") as any)
-        .update({
-          uazapi_instance_status: "disconnected",
-          uazapi_instance_id: null,
-          uazapi_qr_code: null
-        })
-        .eq("id", profile.id);
-
-      if (error) throw error;
-      setInstanceStatus("disconnected");
-      setQrCodeUrl(null);
     } catch (err: any) {
       alert("Erro ao desconectar: " + err.message);
     }
