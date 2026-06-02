@@ -136,22 +136,22 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   };
 
   return (
-    <div className="min-h-screen bg-[#050508] flex flex-col relative overflow-hidden">
+    <div className="h-screen bg-[#050508] flex flex-col relative overflow-hidden">
       
       {/* Impersonation Banner */}
       {isImpersonating && (
         <div 
           onClick={handleStopImpersonating}
-          className="w-full bg-[#fbbf24] hover:bg-[#f59e0b] text-black text-xs font-bold text-center py-2.5 px-4 cursor-pointer transition-colors flex items-center justify-center space-x-2 z-50 animate-in slide-in-from-top duration-200"
+          className="w-full bg-[#fbbf24] hover:bg-[#f59e0b] text-black text-xs font-bold text-center py-2.5 px-4 cursor-pointer transition-colors flex items-center justify-center space-x-2 z-50 flex-shrink-0"
         >
           <Shield className="w-4 h-4 text-black stroke-[2.5px]" />
           <span>⚠️ Você está visualizando como <strong className="font-extrabold">{profile?.name} ({profile?.email})</strong>. Clique aqui para voltar ao Painel Admin.</span>
         </div>
       )}
 
-      <div className="flex-1 flex">
-        {/* Sidebar - largura fixa 220px, altura 100vh */}
-        <aside className="w-[220px] h-screen bg-[#0a0a0f] border-r border-[rgba(139,69,212,0.12)] flex flex-col justify-between flex-shrink-0 sticky top-0 z-30 select-none">
+      <div className="flex-1 flex overflow-hidden">
+        {/* Sidebar - fixed left side, non-scrolling */}
+        <aside className="w-[220px] h-full bg-[#0a0a0f] border-r border-[rgba(139,69,212,0.12)] flex flex-col justify-between flex-shrink-0 z-30 select-none">
           <div>
             {/* Logo + Zap Icon */}
             <div className="p-5 flex items-center justify-between relative">
@@ -326,9 +326,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         </aside>
 
         {/* Main Content */}
-        <div className="flex-1 flex flex-col min-w-0 min-h-screen relative">
+        <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden relative">
           
-          {/* Topbar - sticky, 56px, blur backdrop */}
+          {/* Topbar - 56px, blur backdrop */}
           <header
             className={`h-[56px] sticky top-0 z-20 flex items-center justify-between px-8 border-b transition-colors duration-200 select-none ${
               isAdminMode
@@ -409,8 +409,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             </div>
           </header>
 
-          {/* Content Area */}
-          <main className="flex-1 p-8">
+          {/* Content Area - Scrollable */}
+          <main className="flex-1 p-8 overflow-y-auto">
             {children}
           </main>
         </div>

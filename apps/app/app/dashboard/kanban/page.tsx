@@ -307,9 +307,13 @@ export default function KanbanPage() {
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
           >
-            {columns.map((col) => {
+            {columns.map((col, index) => {
               const colLeads = leads
-                .filter((l) => l.kanban_column_id === col.id)
+                .filter((l) => {
+                  if (l.kanban_column_id === col.id) return true;
+                  if (!l.kanban_column_id && index === 0) return true;
+                  return false;
+                })
                 .sort((a, b) => a.kanban_position - b.kanban_position);
 
               return (

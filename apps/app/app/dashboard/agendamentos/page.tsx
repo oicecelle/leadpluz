@@ -12,6 +12,10 @@ export default function AgendamentosPage() {
   const [calls, setCalls] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Calendar states
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+
   // Filter tab
   const [tab, setTab] = useState<"upcoming" | "completed" | "cancelled">("upcoming");
 
@@ -135,6 +139,56 @@ export default function AgendamentosPage() {
     return c.status === "cancelled" || c.status === "no_show";
   });
 
+  const getCallsForDate = (date: Date) => {
+    return calls.filter((c) => {
+      const callDate = new Date(c.scheduled_at);
+      return (
+        callDate.getDate() === date.getDate() &&
+        callDate.getMonth() === date.getMonth() &&
+        callDate.getFullYear() === date.getFullYear() &&
+        c.status !== "cancelled" && c.status !== "no_show"
+      );
+    });
+  };
+
+  const displayCalls = selectedDate
+    ? calls.filter((c) => {
+        const callDate = new Date(c.scheduled_at);
+        return (
+          callDate.getDate() === selectedDate.getDate() &&
+          callDate.getMonth() === selectedDate.getMonth() &&
+          callDate.getFullYear() === selectedDate.getFullYear()
+        );
+      })
+    : filteredCalls;
+
+  const year = currentDate.getFullYear();
+  const month = currentDate.getMonth();
+
+  const firstDayIndex = new Date(year, month, 1).getDay();
+  const totalDays = new Date(year, month + 1, 0).getDate();
+  const prevMonthTotalDays = new Date(year, month, 0).getDate();
+
+  const daysInGrid: { day: number; isCurrentMonth: boolean; date: Date }[] = [];
+
+  for (let i = firstDayIndex - 1; i >= 0; i--) {
+    const day = prevMonthTotalDays - i;
+    const date = new Date(year, month - 1, day);
+    daysInGrid.push({ day, isCurrentMonth: false, date });
+  }
+
+  for (let i = 1; i <= totalDays; i++) {
+    const date = new Date(year, month, i);
+    daysInGrid.push({ day: i, isCurrentMonth: true, date });
+  }
+
+  const totalCells = daysInGrid.length > 35 ? 42 : 35;
+  const nextMonthPadding = totalCells - daysInGrid.length;
+  for (let i = 1; i <= nextMonthPadding; i++) {
+    const date = new Date(year, month + 1, i);
+    daysInGrid.push({ day: i, isCurrentMonth: false, date });
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#050508] flex items-center justify-center">
@@ -177,30 +231,69 @@ export default function AgendamentosPage() {
 
         {/* Miniature Calendar Grid Preview */}
         <div className="card p-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Cronograma do Mês</span>
-            <span className="text-[9px] text-[#a855f7] font-extrabold uppercase tracking-wider">Visualização rápida</span>
+          <div className="flex items-center justify-between border-b border-[rgba(139,69,212,0.08)] pb-3">
+            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+              🗓️ {currentDate.toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}
+            </span>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => {
+                  setCurrentDate(new Date(year, month - 1, 1));
+                  setSelectedDate(null);
+                }}
+                className="btn-secondary py-1 px-2.5 text-[10px] uppercase font-bold tracking-wider cursor-pointer"
+              >
+                &lt; Ant
+              </button>
+              <button
+                onClick={() => {
+                  setCurrentDate(new Date(year, month + 1, 1));
+                  setSelectedDate(null);
+                }}
+                className="btn-secondary py-1 px-2.5 text-[10px] uppercase font-bold tracking-wider cursor-pointer"
+              >
+                Próx &gt;
+              </button>
+            </div>
           </div>
           <div className="grid grid-cols-7 gap-2 text-center text-xs">
             {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map((d) => (
               <div key={d} className="font-bold text-gray-500 uppercase text-[9px] tracking-wider">{d}</div>
             ))}
             
-            {Array.from({ length: 28 }).map((_, idx) => {
-              const dayNum = idx + 1;
-              const hasCallThisDay = dayNum % 7 === 3; // Mock visual call indicator
+            {daysInGrid.map(({ day, isCurrentMonth, date }, idx) => {
+              const dayCalls = getCallsForDate(date);
+              const hasCalls = dayCalls.length > 0;
+              const isSelected = selectedDate && 
+                selectedDate.getDate() === date.getDate() &&
+                selectedDate.getMonth() === date.getMonth() &&
+                selectedDate.getFullYear() === date.getFullYear();
+
               return (
                 <div
                   key={idx}
-                  className={`aspect-square p-2 border rounded-lg flex flex-col justify-between items-center transition-colors ${
-                    hasCallThisDay 
-                      ? "bg-[rgba(139,69,212,0.06)] border-[rgba(139,69,212,0.22)]" 
-                      : "bg-[#141426]/30 border-[rgba(139,69,212,0.06)] hover:border-[rgba(139,69,212,0.15)]"
+                  onClick={() => {
+                    if (isSelected) {
+                      setSelectedDate(null);
+                    } else {
+                      setSelectedDate(date);
+                    }
+                  }}
+                  className={`aspect-square p-2 border rounded-lg flex flex-col justify-between items-center transition-all cursor-pointer relative ${
+                    isSelected
+                      ? "bg-[#6b2fb5]/20 border-[#a855f7] shadow-glow-sm scale-[1.03]"
+                      : hasCalls
+                      ? "bg-[rgba(139,69,212,0.06)] border-[rgba(139,69,212,0.22)] hover:border-[rgba(139,69,212,0.4)]"
+                      : isCurrentMonth
+                      ? "bg-[#141426]/30 border-[rgba(139,69,212,0.06)] hover:border-[rgba(139,69,212,0.18)]"
+                      : "bg-transparent border-transparent text-gray-700 opacity-20 hover:opacity-40"
                   }`}
                 >
-                  <span className="font-semibold text-gray-400 text-[10px]">{dayNum}</span>
-                  {hasCallThisDay && (
-                    <div className="w-1.5 h-1.5 rounded-full bg-[#a855f7] shadow-glow-sm" />
+                  <span className={`font-semibold text-[10px] ${isCurrentMonth ? "text-gray-300" : "text-gray-600"}`}>{day}</span>
+                  {hasCalls && (
+                    <div className="flex items-center justify-center bg-[#a855f7] text-white text-[8px] font-extrabold w-4 h-4 rounded-full shadow-glow-sm mt-0.5">
+                      {dayCalls.length}
+                    </div>
                   )}
                 </div>
               );
@@ -208,10 +301,25 @@ export default function AgendamentosPage() {
           </div>
         </div>
 
+        {/* Date Filter Indicator */}
+        {selectedDate && (
+          <div className="bg-purple-950/20 border border-purple-500/25 px-4 py-2.5 rounded-lg flex items-center justify-between animate-in fade-in duration-150">
+            <span className="text-xs text-purple-300 font-semibold">
+              📅 Filtrado por data: <strong className="text-white">{selectedDate.toLocaleDateString("pt-BR")}</strong>
+            </span>
+            <button
+              onClick={() => setSelectedDate(null)}
+              className="text-[11px] font-bold uppercase tracking-wider text-purple-400 hover:text-purple-300 cursor-pointer"
+            >
+              Exibir Todos
+            </button>
+          </div>
+        )}
+
         {/* Calls Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {filteredCalls.length > 0 ? (
-            filteredCalls.map((c) => {
+          {displayCalls.length > 0 ? (
+            displayCalls.map((c) => {
               const dateObj = new Date(c.scheduled_at);
               const day = String(dateObj.getDate()).padStart(2, '0');
               const month = dateObj.toLocaleDateString("pt-BR", { month: 'short' }).substring(0, 3).toUpperCase();

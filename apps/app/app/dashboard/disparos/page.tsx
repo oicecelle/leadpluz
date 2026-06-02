@@ -287,8 +287,11 @@ export default function DisparosPage() {
         setQrCodeUrl(null);
       } catch (err: any) {
         console.error("Erro ao conectar:", err.message);
+        alert("Erro ao conectar: " + err.message);
+        setInstanceStatus("disconnected");
+        setQrCodeUrl(null);
       }
-    }, 8000);
+    }, 2000);
   };
 
   const handleDisconnectWhatsApp = async () => {
@@ -808,25 +811,100 @@ export default function DisparosPage() {
           </div>
         )}
 
-        {/* Official API section (Disabled/Ultra Plan demo) */}
+        {/* Official API section */}
         {apiType === "official" && (
-          <div className="card p-16 text-center flex flex-col items-center justify-center space-y-4">
-            <div className="w-12 h-12 rounded-full bg-[#141426] flex items-center justify-center text-gray-500">
-              <Send className="w-6 h-6 text-[#a855f7]" />
+          <div className="space-y-6 animate-in fade-in duration-200">
+            {/* Tutorial Card */}
+            <div className="card p-6 space-y-6">
+              <div className="border-b border-[rgba(139,69,212,0.12)] pb-4">
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center space-x-2">
+                  <Layers className="w-4 h-4 text-[#a855f7]" />
+                  <span>Tutorial: Integração com WhatsApp Business API Oficial (Meta)</span>
+                </h3>
+                <p className="text-xs text-gray-500 mt-1">
+                  Siga os passos abaixo para registrar seu número na API Oficial de Nuvem da Meta.
+                </p>
+              </div>
+
+              <div className="space-y-4">
+                {[
+                  {
+                    step: "1",
+                    title: "Conta no Meta para Desenvolvedores",
+                    desc: "Acesse developers.facebook.com com sua conta comercial do Facebook, crie um aplicativo empresarial e adicione o produto 'WhatsApp'."
+                  },
+                  {
+                    step: "2",
+                    title: "Configurar Número e Verificação",
+                    desc: "Insira as informações comerciais, número de telefone que deseja usar e realize a verificação do número por SMS ou ligação de voz."
+                  },
+                  {
+                    step: "3",
+                    title: "Obter IDs e Token Permanente",
+                    desc: "No painel do WhatsApp, copie o 'WhatsApp Business Account ID', o 'Phone Number ID' e crie um Token de Acesso Permanente em 'Usuários do Sistema'."
+                  },
+                  {
+                    step: "4",
+                    title: "Configurar Rota e Templates",
+                    desc: "Registre seus templates de prospecção aprovados pela Meta para poder enviar mensagens ativas para novos leads sem bloqueios."
+                  }
+                ].map((s) => (
+                  <div key={s.step} className="flex space-x-4">
+                    <div className="w-6 h-6 rounded-full bg-[#141426] border border-purple-500/20 flex items-center justify-center text-purple-300 text-xs font-bold flex-shrink-0">
+                      {s.step}
+                    </div>
+                    <div className="space-y-1">
+                      <h4 className="text-xs font-bold text-white uppercase tracking-wide">{s.title}</h4>
+                      <p className="text-[11px] text-gray-400 leading-relaxed">{s.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
-            <h3 className="text-sm font-bold text-white uppercase tracking-wider">Disparos via API Oficial</h3>
-            <p className="text-xs text-gray-500 max-w-sm leading-relaxed">
-              Disparos de API Oficial exigem integração com o Meta Cloud API e conta Chatwoot ativa.
-            </p>
-            {profile?.plan !== "ultra" ? (
-              <div className="text-[9px] text-[#fbbf24] bg-yellow-950/20 border border-yellow-500/20 px-4 py-2 rounded-lg font-bold uppercase tracking-wider mt-4">
-                Disponível apenas no plano Ultra
+
+            {/* Chatwoot Support Connection Card */}
+            <div className="card p-6 space-y-6">
+              <div className="border-b border-[rgba(139,69,212,0.12)] pb-4">
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center space-x-2">
+                  <MessageSquare className="w-4 h-4 text-[#a855f7]" />
+                  <span>Ativação da Caixa de Entrada Unificada (Chatwoot)</span>
+                </h3>
+                <p className="text-xs text-gray-500 mt-1">
+                  O fluxo oficial direciona os disparos e respostas para o Chatwoot, evitando banimentos e facilitando o atendimento.
+                </p>
               </div>
-            ) : (
-              <div className="text-[9px] text-[#4ade80] bg-green-950/20 border border-green-500/20 px-4 py-2 rounded-lg font-bold uppercase tracking-wider mt-4">
-                Entre em contato com o suporte para conectar seu canal Meta
+
+              <div className="p-4 bg-[rgba(139,69,212,0.04)] border border-[rgba(139,69,212,0.15)] rounded-xl space-y-3">
+                <p className="text-xs text-gray-300 leading-relaxed">
+                  Para criar e configurar sua conta dedicada no Chatwoot integrada com a Meta API Oficial, nossa equipe precisa habilitar seu ambiente exclusivo.
+                </p>
+                <div className="text-[11px] text-gray-400">
+                  Benefícios da API Oficial + Chatwoot:
+                  <ul className="list-disc pl-5 mt-1.5 space-y-1">
+                    <li>Risco zero de banimento de chip no WhatsApp.</li>
+                    <li>Caixa de entrada compartilhada para múltiplos atendentes responderem leads.</li>
+                    <li>Status de entrega, leitura e relatórios precisos.</li>
+                  </ul>
+                </div>
               </div>
-            )}
+
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pt-2">
+                <div className="flex items-center space-x-2 text-[10px] text-[#fbbf24] bg-yellow-950/10 border border-yellow-500/20 px-3.5 py-2 rounded-lg">
+                  <AlertTriangle className="w-4 h-4 text-[#fbbf24] flex-shrink-0" />
+                  <span>Requer plano ativo compatível com a API Oficial (Plano Ultra).</span>
+                </div>
+                
+                <a
+                  href="https://wa.me/5521976640033?text=Olá,%20gostaria%20de%20ativar%20a%20API%20Oficial%20e%20a%20conta%20Chatwoot%20no%20meu%20Lead%20Pluz!"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-primary text-xs uppercase font-bold tracking-wider py-2.5 px-5 flex items-center space-x-2 cursor-pointer shadow-glow-sm"
+                >
+                  <MessageSquare className="w-4 h-4" />
+                  <span>Falar com o Suporte</span>
+                </a>
+              </div>
+            </div>
           </div>
         )}
       </div>

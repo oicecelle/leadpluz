@@ -228,15 +228,76 @@ export default function CRMPage() {
     }
   };
 
-  const handleInlineStatusChange = async (leadId: string, newStatus: string) => {
+  const handleSelectLead = (leadId: string) => {
+    setSelectedLeads((prev) =>
+      prev.includes(leadId) ? prev.filter((id) => id !== leadId) : [...prev, leadId]
+    );
+  };
+
+  const handleSelectAllFiltered = () => {
+    const filteredIds = filteredLeads.map((l) => l.id);
+    const allSelected = filteredIds.every((id) => selectedLeads.includes(id));
+    if (allSelected) {
+      setSelectedLeads((prev) => prev.filter((id) => !filteredIds.includes(id)));
+    } else {
+      setSelectedLeads((prev) => Array.from(new Set([...prev, ...filteredIds])));
+    }
+  };
+
+  const handleExportSelected = () => {
+    const leadsToExport = leads.filter((l) => selectedLeads.includes(l.id));
+    if (leadsToExport.length === 0) return;
+    const worksheet = XLSX.utils.json_to_sheet(
+      leadsToExport.map((l) => ({
+        Nome: l.name,
+        Telefone: l.phone || "",
+        Email: l.email || "",
+        Categoria: l.category || "",
+        Cidade: l.city || "",
+        Estado: l.state || "",
+        Status: l.status,
+        Origem: l.source_type || "",
+        Notas: l.notes || "",
+        BuscadoEm: l.created_at ? new Date(l.created_at).toLocaleDateString("pt-BR") : "",
+        ContatadoEm: l.contacted_at ? new Date(l.contacted_at).toLocaleDateString("pt-BR") : "",
+      }))
+    );
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "CRM Leads Selecionados");
+    XLSX.writeFile(workbook, "leads_selecionados.xlsx");
+  };
+
+  const handleDeleteSelected = async () => {
+    if (selectedLeads.length === 0) return;
+    if (!confirm(`Tem certeza que deseja excluir os ${selectedLeads.length} leads selecionados?`)) return;
     try {
       const { error } = await (supabase.from("user_leads") as any)
-        .update({ status: newStatus })
+        .delete()
+        .in("id", selectedLeads);
+      if (error) throw error;
+
+      setLeads(leads.filter((l) => !selectedLeads.includes(l.id)));
+      setSelectedLeads([]);
+      alert("Leads excluídos com sucesso.");
+    } catch (err: any) {
+      alert("Erro ao excluir leads: " + err.message);
+    }
+  };
+
+  const handleInlineStatusChange = async (leadId: string, newStatus: string) => {
+    try {
+      const existingLead = leads.find((l) => l.id === leadId);
+      const contactedAt = newStatus === "contacted" 
+        ? (existingLead?.contacted_at || new Date().toISOString()) 
+        : (newStatus === "new" ? null : existingLead?.contacted_at);
+
+      const { error } = await (supabase.from("user_leads") as any)
+        .update({ status: newStatus, contacted_at: contactedAt })
         .eq("id", leadId);
 
       if (error) throw error;
 
-      setLeads(leads.map((l) => (l.id === leadId ? { ...l, status: newStatus } : l)));
+      setLeads(leads.map((l) => (l.id === leadId ? { ...l, status: newStatus, contacted_at: contactedAt } : l)));
     } catch (err: any) {
       alert("Erro ao atualizar status: " + err.message);
     }
@@ -261,6 +322,7 @@ export default function CRMPage() {
     setModalLoading(true);
 
     const formData = new FormData(e.currentTarget);
+    const contactedAtVal = formData.get("contacted_at") as string;
     const leadData = {
       name: formData.get("name") as string,
       phone: formData.get("phone") as string,
@@ -274,6 +336,7 @@ export default function CRMPage() {
       instagram: formData.get("instagram") as string,
       tiktok: formData.get("tiktok") as string,
       user_id: profile.id,
+      contacted_at: contactedAtVal ? new Date(contactedAtVal).toISOString() : (formData.get("status") === "contacted" ? new Date().toISOString() : null),
     };
 
     try {
@@ -385,17 +448,21 @@ export default function CRMPage() {
               />
             </div>
 
+            <span className="text-[10px] text-purple-300 font-bold whitespace-nowrap bg-[rgba(139,69,212,0.06)] border border-[rgba(139,69,212,0.15)] px-2.5 py-1 rounded-lg">
+              {filteredLeads.length} de {leads.length} filtrados
+            </span>
+
             {/* Filters Selects */}
             <div className="flex space-x-2 flex-wrap gap-y-2">
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="input py-1 text-xs w-[130px] font-medium cursor-pointer"
+                className="input h-8 py-0 px-2 text-[11px] w-[115px] font-medium cursor-pointer"
               >
-                <option value="all">Todos os Status</option>
+                <option value="all">Status</option>
                 <option value="new">Novo</option>
                 <option value="contacted">Contatado</option>
-                <option value="proposal_sent">Proposta Enviada</option>
+                <option value="proposal_sent">Proposta</option>
                 <option value="converted">Convertido</option>
                 <option value="no_interest">Sem interesse</option>
               </select>
@@ -404,9 +471,9 @@ export default function CRMPage() {
                 <select
                   value={categoryFilter}
                   onChange={(e) => setCategoryFilter(e.target.value)}
-                  className="input py-1 text-xs w-[140px] font-medium cursor-pointer"
+                  className="input h-8 py-0 px-2 text-[11px] w-[125px] font-medium cursor-pointer"
                 >
-                  <option value="all">Todas Categorias</option>
+                  <option value="all">Categorias</option>
                   {categories.map((c) => (
                     <option key={c} value={c}>
                       {c}
@@ -446,24 +513,76 @@ export default function CRMPage() {
           </div>
         </div>
 
+        {/* Batch Actions floating bar */}
+        {selectedLeads.length > 0 && (
+          <div className="bg-purple-950/20 border border-purple-500/25 px-5 py-3 rounded-xl flex items-center justify-between animate-in slide-in-from-top-2 duration-150">
+            <span className="text-xs text-purple-300 font-semibold">
+              ⚡ {selectedLeads.length} {selectedLeads.length === 1 ? "lead selecionado" : "leads selecionados"}
+            </span>
+            <div className="flex items-center space-x-2.5">
+              <button
+                onClick={handleExportSelected}
+                className="btn-primary py-1.5 px-3.5 text-[11px] font-bold uppercase tracking-wider flex items-center space-x-1.5 cursor-pointer shadow-glow-sm"
+              >
+                <FileDown className="w-3.5 h-3.5" />
+                <span>Exportar Selecionados</span>
+              </button>
+              <button
+                onClick={handleDeleteSelected}
+                className="bg-red-950/40 border border-red-500/30 hover:bg-red-900/40 text-red-200 py-1.5 px-3.5 rounded-lg text-[11px] font-bold uppercase tracking-wider flex items-center space-x-1.5 transition-all cursor-pointer"
+              >
+                <Trash2 className="w-3.5 h-3.5 text-red-400" />
+                <span>Excluir Selecionados</span>
+              </button>
+              <button
+                onClick={() => setSelectedLeads([])}
+                className="btn-secondary py-1.5 px-3 text-[11px] font-bold uppercase tracking-wider cursor-pointer"
+              >
+                Limpar
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Leads Table */}
         <div className="card overflow-hidden">
           <div className="overflow-x-auto">
             <table className="premium-table">
               <thead className="bg-[#141426]">
                 <tr>
+                  <th className="w-[45px]">
+                    <div 
+                      onClick={handleSelectAllFiltered}
+                      className="w-4 h-4 rounded border flex items-center justify-center transition-all cursor-pointer border-[rgba(139,69,212,0.3)] bg-transparent hover:border-[#8b45d4]"
+                    >
+                      {filteredLeads.length > 0 && filteredLeads.every(l => selectedLeads.includes(l.id)) && (
+                        <div className="w-2.5 h-2.5 bg-[#a855f7] rounded-sm shadow-glow-sm" />
+                      )}
+                    </div>
+                  </th>
                   <th>Nome</th>
                   <th>Contato</th>
                   <th>Status</th>
                   <th>Categoria</th>
                   <th>Cidade/Bairro</th>
+                  <th>Buscado em</th>
                   <th className="w-[100px] text-right">Ações</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredLeads.length > 0 ? (
                   filteredLeads.map((lead) => (
-                    <tr key={lead.id} className="hover:bg-[rgba(139,69,212,0.04)] transition-colors">
+                    <tr key={lead.id} className={`hover:bg-[rgba(139,69,212,0.04)] transition-colors ${selectedLeads.includes(lead.id) ? "bg-[rgba(139,69,212,0.02)]" : ""}`}>
+                      <td>
+                        <div 
+                          onClick={() => handleSelectLead(lead.id)}
+                          className="w-4 h-4 rounded border flex items-center justify-center transition-all cursor-pointer border-[rgba(139,69,212,0.3)] bg-transparent hover:border-[#8b45d4]"
+                        >
+                          {selectedLeads.includes(lead.id) && (
+                            <div className="w-2.5 h-2.5 bg-[#a855f7] rounded-sm shadow-glow-sm" />
+                          )}
+                        </div>
+                      </td>
                       <td className="font-semibold text-white">{lead.name}</td>
                       <td>
                         <div className="flex flex-col text-xs space-y-0.5">
@@ -476,27 +595,34 @@ export default function CRMPage() {
                         </div>
                       </td>
                       <td>
-                        <select
-                          value={lead.status}
-                          onChange={(e) => handleInlineStatusChange(lead.id, e.target.value)}
-                          className={`text-[10px] uppercase tracking-wider px-2.5 py-1.5 rounded-full border font-bold outline-none cursor-pointer transition-all ${
-                            lead.status === "new"
-                              ? "bg-[#0f0f1a] text-[#c084fc] border-[rgba(139,69,212,0.3)] hover:border-[rgba(139,69,212,0.5)]"
-                              : lead.status === "contacted"
-                                ? "bg-[#0a1520] text-[#60a5fa] border-[rgba(59,130,246,0.3)] hover:border-[rgba(59,130,246,0.5)]"
-                                : lead.status === "proposal_sent"
-                                  ? "bg-[#150f00] text-[#fbbf24] border-[rgba(245,158,11,0.3)] hover:border-[rgba(245,158,11,0.5)]"
-                                  : lead.status === "converted"
-                                    ? "bg-[#051505] text-[#4ade80] border-[rgba(34,197,94,0.3)] hover:border-[rgba(34,197,94,0.5)]"
-                                    : "bg-[#150505] text-[#f87171] border-[rgba(239,68,68,0.3)] hover:border-[rgba(239,68,68,0.5)]"
-                          }`}
-                        >
-                          <option value="new">Novo</option>
-                          <option value="contacted">Contatado</option>
-                          <option value="proposal_sent">Proposta</option>
-                          <option value="converted">Convertido</option>
-                          <option value="no_interest">Sem interesse</option>
-                        </select>
+                        <div className="flex flex-col space-y-1">
+                          <select
+                            value={lead.status}
+                            onChange={(e) => handleInlineStatusChange(lead.id, e.target.value)}
+                            className={`text-[10px] uppercase tracking-wider px-2.5 py-1.5 rounded-full border font-bold outline-none cursor-pointer transition-all ${
+                              lead.status === "new"
+                                ? "bg-[#0f0f1a] text-[#c084fc] border-[rgba(139,69,212,0.3)] hover:border-[rgba(139,69,212,0.5)]"
+                                : lead.status === "contacted"
+                                  ? "bg-[#0a1520] text-[#60a5fa] border-[rgba(59,130,246,0.3)] hover:border-[rgba(59,130,246,0.5)]"
+                                  : lead.status === "proposal_sent"
+                                    ? "bg-[#150f00] text-[#fbbf24] border-[rgba(245,158,11,0.3)] hover:border-[rgba(245,158,11,0.5)]"
+                                    : lead.status === "converted"
+                                      ? "bg-[#051505] text-[#4ade80] border-[rgba(34,197,94,0.3)] hover:border-[rgba(34,197,94,0.5)]"
+                                      : "bg-[#150505] text-[#f87171] border-[rgba(239,68,68,0.3)] hover:border-[rgba(239,68,68,0.5)]"
+                            }`}
+                          >
+                            <option value="new">Novo</option>
+                            <option value="contacted">Contatado</option>
+                            <option value="proposal_sent">Proposta</option>
+                            <option value="converted">Convertido</option>
+                            <option value="no_interest">Sem interesse</option>
+                          </select>
+                          {lead.status === "contacted" && lead.contacted_at && (
+                            <span className="text-[9px] text-[#60a5fa] font-mono font-semibold">
+                              🔑 {new Date(lead.contacted_at).toLocaleDateString("pt-BR")}
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td>
                         {lead.category ? (
@@ -506,6 +632,9 @@ export default function CRMPage() {
                         )}
                       </td>
                       <td className="text-gray-400 font-medium">{lead.city || "—"}</td>
+                      <td className="text-gray-400 font-medium font-mono text-xs">
+                        {lead.created_at ? new Date(lead.created_at).toLocaleDateString("pt-BR") : "—"}
+                      </td>
                       <td className="text-right space-x-2">
                         <button
                           onClick={() => {
@@ -527,7 +656,7 @@ export default function CRMPage() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={6} className="text-center py-12 text-gray-500 text-sm">
+                    <td colSpan={8} className="text-center py-12 text-gray-500 text-sm">
                       Nenhum lead encontrado com os filtros atuais.
                     </td>
                   </tr>
@@ -632,6 +761,15 @@ export default function CRMPage() {
                     placeholder="@perfil"
                     defaultValue={editingLead?.instagram || ""}
                     className="input"
+                  />
+                </div>
+                <div className="flex flex-col space-y-1">
+                  <label className="text-[10px] font-bold text-gray-500 uppercase">Data de Contato</label>
+                  <input
+                    type="date"
+                    name="contacted_at"
+                    defaultValue={editingLead?.contacted_at ? new Date(editingLead.contacted_at).toISOString().split('T')[0] : ""}
+                    className="input text-xs"
                   />
                 </div>
               </div>
