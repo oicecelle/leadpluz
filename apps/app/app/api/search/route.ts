@@ -12,13 +12,207 @@ const adminClient = supabaseServiceKey
 
 const supabase = adminClient;
 
-// Mock lead generator if API keys are missing
+function getCategoryFromKeyword(keyword: string): string {
+  const kw = keyword.toLowerCase().trim();
+  
+  if (
+    kw.includes("dentista") || 
+    kw.includes("odont") || 
+    kw.includes("dental") || 
+    kw.includes("dente") || 
+    kw.includes("ortodontia")
+  ) {
+    return "Clínica Odontológica";
+  }
+  
+  if (
+    kw.includes("salão") || 
+    kw.includes("salao") || 
+    kw.includes("beleza") || 
+    kw.includes("estética") || 
+    kw.includes("estetica") || 
+    kw.includes("cabeleireiro") || 
+    kw.includes("manicure") || 
+    kw.includes("barbearia") ||
+    kw.includes("barber")
+  ) {
+    return "Salão de Beleza";
+  }
+  
+  if (
+    kw.includes("academia") || 
+    kw.includes("gym") || 
+    kw.includes("fit") || 
+    kw.includes("fitness") || 
+    kw.includes("crossfit") || 
+    kw.includes("treino")
+  ) {
+    return "Academia";
+  }
+  
+  if (
+    kw.includes("pet") || 
+    kw.includes("veterin") || 
+    kw.includes("banho e tosa") || 
+    kw.includes("clinicão") || 
+    kw.includes("cão") || 
+    kw.includes("gato")
+  ) {
+    return "Pet Shop";
+  }
+  
+  if (
+    kw.includes("imobili") || 
+    kw.includes("corretor") || 
+    kw.includes("imóveis") || 
+    kw.includes("apartamento") || 
+    kw.includes("aluguel")
+  ) {
+    return "Imobiliária";
+  }
+  
+  if (
+    kw.includes("restaurante") || 
+    kw.includes("pizzaria") || 
+    kw.includes("hamburg") || 
+    kw.includes("sushi") || 
+    kw.includes("comida") || 
+    kw.includes("lanchonete") || 
+    kw.includes("bar") || 
+    kw.includes("gastronomia")
+  ) {
+    return "Restaurante";
+  }
+  
+  return "Comércio local";
+}
+
+async function fetchGoogleLeads(keyword: string, location: string, apiKey: string, cseId: string, limit: number = 10): Promise<any[]> {
+  try {
+    const query = `"${keyword}" "${location}" "whatsapp" OR "telefone" OR "contato"`;
+    const url = `https://www.googleapis.com/customsearch/v1?key=${apiKey}&cx=${cseId}&q=${encodeURIComponent(query)}&num=${limit}`;
+    
+    const res = await fetch(url);
+    if (!res.ok) {
+      const errText = await res.text();
+      console.error("Google Custom Search API error response:", errText);
+      return [];
+    }
+    
+    const data = await res.json();
+    const items = data.items || [];
+    
+    const leads: any[] = [];
+    
+    for (const item of items) {
+      const title = item.title || "";
+      const snippet = item.snippet || "";
+      const link = item.link || "";
+      
+      let name = title
+        .split(" - ")[0]
+        .split(" | ")[0]
+        .split(": ")[0]
+        .trim();
+      
+      if (!name || name.length < 3) {
+        name = `${keyword.charAt(0).toUpperCase() + keyword.slice(1)} - ${location}`;
+      }
+      
+      const phoneRegex = /(?:\+?55\s?)?(?:\(?([1-9][1-9])\)?\s?)(?:9\s?)?([0-9]{4})[-\s]?([0-9]{4})/g;
+      let phone = null;
+      let match;
+      const combinedText = `${title} ${snippet} ${link}`;
+      
+      while ((match = phoneRegex.exec(combinedText)) !== null) {
+        const ddd = match[1];
+        const part1 = match[2];
+        const part2 = match[3];
+        if (ddd && part1 && part2) {
+          const numDigits = part1.length + part2.length;
+          if (numDigits === 8) {
+            phone = `55${ddd}9${part1}${part2}`;
+            break;
+          } else if (numDigits === 9) {
+            phone = `55${ddd}${part1}${part2}`;
+            break;
+          }
+        }
+      }
+      
+      if (!phone) {
+        const simplePhoneRegex = /\b\(?[1-9][1-9]\)?\s?9?[0-9]{4}[-\s]?[0-9]{4}\b/;
+        const simpleMatch = combinedText.match(simplePhoneRegex);
+        if (simpleMatch) {
+          phone = "55" + simpleMatch[0].replace(/\D/g, "");
+          if (phone.length < 12) {
+            if (phone.length === 11) {
+              phone = phone.slice(0, 4) + "9" + phone.slice(4);
+            }
+          }
+        }
+      }
+      
+      const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
+      const emailMatch = combinedText.match(emailRegex);
+      const email = emailMatch ? emailMatch[0].toLowerCase() : null;
+      
+      let website = null;
+      try {
+        const urlObj = new URL(link);
+        if (!urlObj.hostname.includes("instagram.com") && 
+            !urlObj.hostname.includes("facebook.com") && 
+            !urlObj.hostname.includes("youtube.com") &&
+            !urlObj.hostname.includes("linkedin.com") &&
+            !urlObj.hostname.includes("whatsapp.com")) {
+          website = urlObj.origin;
+        }
+      } catch (e) {
+      }
+      
+      let instagram = null;
+      if (link.includes("instagram.com/")) {
+        const parts = link.split("instagram.com/")[1]?.split("/");
+        const handle = parts ? parts[0] : null;
+        if (handle && handle !== "p" && handle !== "reels" && handle !== "explore") {
+          instagram = `@${handle}`;
+        }
+      }
+      if (!instagram) {
+        const instaRegex = /@([a-zA-Z0-9_.]+)/;
+        const instaMatch = combinedText.match(instaRegex);
+        if (instaMatch) {
+          instagram = instaMatch[0];
+        }
+      }
+      
+      if (phone) {
+        leads.push({
+          name: name,
+          category: getCategoryFromKeyword(keyword),
+          city: (location.split(',')[0] || location || "Desconhecido").trim(),
+          state: location.split(',')[1]?.trim() || "SP",
+          phone: phone,
+          email: email,
+          website: website,
+          instagram: instagram,
+          tiktok: null,
+          source: "google",
+          search_keyword: keyword.toLowerCase().trim()
+        });
+      }
+    }
+    
+    return leads;
+  } catch (error) {
+    console.error("Error in fetchGoogleLeads:", error);
+    return [];
+  }
+}
+
+// Mock lead generator if API keys are missing or return no data
 function generateMockLeads(keyword: string, location: string, count: number = 10) {
-  const categories = ["Clínica Odontológica", "Salão de Beleza", "Academia", "Pet Shop", "Imobiliária", "Restaurante"];
-  const selectedCategory = categories.find(c => {
-    const firstWord = c.toLowerCase().split(' ')[0];
-    return firstWord ? keyword.toLowerCase().includes(firstWord) : false;
-  }) || "Comércio local";
+  const selectedCategory = getCategoryFromKeyword(keyword);
   
   const mockNames = [
     "Sorriso Ideal", "Bella Estética", "Fit Life", "Amigo Fiel", "Lar Doce Lar",
@@ -45,7 +239,7 @@ function generateMockLeads(keyword: string, location: string, count: number = 10
       instagram: Math.random() > 0.4 ? instagram : null,
       tiktok: null,
       source: "google" as const,
-      search_keyword: keyword
+      search_keyword: keyword.toLowerCase().trim()
     });
   }
   return leads;
@@ -100,36 +294,32 @@ export async function POST(request: NextRequest) {
         const cleanKeyword = keyword.trim().toLowerCase();
         const cleanLoc = loc.trim().toLowerCase();
 
-        // 2. Check search cache
-        const { data: cache } = await (supabase.from("search_cache") as any)
-          .select("*")
-          .eq("keyword", cleanKeyword)
-          .eq("city", cleanLoc)
-          .maybeSingle();
+        const mappedCategory = getCategoryFromKeyword(cleanKeyword);
 
-        const sevenDaysAgo = new Date(Date.now() - 7 * 86400000);
-        const isCacheValid = cache && new Date(cache.last_fetched_at) > sevenDaysAgo;
+        // Check if we already have leads of this category in this city in leads_geral
+        const { data: cachedLeads } = await (supabase.from("leads_geral") as any)
+          .select("*")
+          .eq("category", mappedCategory)
+          .eq("city", cleanLoc);
 
         let leadsForQuery: any[] = [];
 
-        if (isCacheValid) {
-          // Fetch from leads_geral cache
-          const { data: cachedLeads } = await (supabase.from("leads_geral") as any)
-            .select("*")
-            .eq("search_keyword", cleanKeyword)
-            .eq("city", cleanLoc);
-
-          if (cachedLeads && cachedLeads.length > 0) {
-            leadsForQuery = cachedLeads;
-          }
+        if (cachedLeads && cachedLeads.length > 0) {
+          console.log(`Reutilizando ${cachedLeads.length} leads da categoria "${mappedCategory}" na cidade "${cleanLoc}" do banco.`);
+          leadsForQuery = cachedLeads;
         }
 
         if (leadsForQuery.length === 0) {
           // If no cache or invalid, perform search
           if (googleApiKey && googleCseId && source === "google") {
-            // Actual Google CSE API call would go here
-            // Fallback to mock for local testing robustness
-            leadsForQuery = generateMockLeads(cleanKeyword, cleanLoc, 10);
+            console.log(`Buscando via Google API para: ${cleanKeyword} em ${cleanLoc}`);
+            leadsForQuery = await fetchGoogleLeads(cleanKeyword, cleanLoc, googleApiKey, googleCseId, 10);
+            
+            // Fallback to mock if API returned 0 results (limit reached or query found nothing)
+            if (leadsForQuery.length === 0) {
+              console.log("Nenhum resultado com telefone via Google API, utilizando fallback mock.");
+              leadsForQuery = generateMockLeads(cleanKeyword, cleanLoc, 10);
+            }
           } else {
             // Generate mock leads
             leadsForQuery = generateMockLeads(cleanKeyword, cleanLoc, 12);
@@ -137,7 +327,7 @@ export async function POST(request: NextRequest) {
 
           // Save new leads to leads_geral
           if (leadsForQuery.length > 0) {
-            const { error: insErr } = await (supabase.from("leads_geral") as any)
+            const { data: insertedGeralLeads, error: insErr } = await (supabase.from("leads_geral") as any)
               .insert(leadsForQuery.map(l => ({
                 name: l.name,
                 category: l.category,
@@ -150,9 +340,14 @@ export async function POST(request: NextRequest) {
                 tiktok: l.tiktok,
                 source: l.source,
                 search_keyword: l.search_keyword
-              })));
+              })))
+              .select();
 
-            if (insErr) console.error("Erro ao salvar leads na base geral:", insErr.message);
+            if (insErr) {
+              console.error("Erro ao salvar leads na base geral:", insErr.message);
+            } else if (insertedGeralLeads && insertedGeralLeads.length > 0) {
+              leadsForQuery = insertedGeralLeads;
+            }
 
             // Update search_cache
             const { error: cacheErr } = await (supabase.from("search_cache") as any)
