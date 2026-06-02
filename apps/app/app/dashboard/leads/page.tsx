@@ -137,7 +137,19 @@ export default function LeadsSearchPage() {
         return;
       }
 
-      setResults(data.leads || []);
+      const leads = data.leads || [];
+      setResults(leads);
+
+      if (leads.length === 0 && !data.error) {
+        const filtersActive = phoneRequired || emailRequired;
+        const filterMsg = filtersActive
+          ? " Os filtros de campo obrigatório podem ter excluído todos os resultados disponíveis."
+          : "";
+        const msg = data.message
+          ? data.message + filterMsg
+          : `Nenhum lead encontrado para essa busca.${filterMsg}`;
+        alert(msg);
+      }
 
       if (data.limitReached) {
         setUpgradeMsg(
@@ -390,6 +402,22 @@ export default function LeadsSearchPage() {
                     </div>
                     <span className="text-xs text-gray-300 font-medium">E-mail Obrigatório</span>
                   </div>
+                </div>
+              )}
+
+              {/* Filter Warning - appears when phone or email required is checked */}
+              {source === "google" && (phoneRequired || emailRequired) && (
+                <div className="flex items-start space-x-2 text-xs text-[#fbbf24] bg-yellow-950/15 border border-yellow-500/20 px-3.5 py-2 rounded-lg max-w-md animate-in fade-in duration-200 w-full lg:w-auto">
+                  <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                  <span>
+                    Filtro ativo: leads sem
+                    {phoneRequired && emailRequired
+                      ? " telefone e e-mail"
+                      : phoneRequired
+                      ? " telefone"
+                      : " e-mail"}
+                    {" "}não serão exibidos nos resultados.
+                  </span>
                 </div>
               )}
 

@@ -305,60 +305,30 @@ export async function POST(request: NextRequest) {
         let leadsForQuery: any[] = [];
         const cityPart = cleanLoc.split(",")[0].trim();
 
-        // STEP 1: Search leads_geral by keyword similarity in category field + city
-        // This finds leads like "botox" matching "Toxina botulinica", "design sobrancelha" matching "Design de sobrancelhas" etc.
-        const { data: byKeywordInCategory } = await (supabase.from("leads_geral") as any)
-          .select("*")
-          .ilike("category", `%${cleanKeyword}%`)
-          .ilike("city", `%${cityPart}%`)
-          .limit(50);
+        // STEP 1-4 collapsed: Use accent-insensitive RPC function that searches
+        // across category, name, and search_keyword simultaneously
+        const { data: rpcLeads, error: rpcErr } = await (supabase.rpc as any)(
+          "search_leads_geral",
+          { p_keyword: cleanKeyword, p_city: cityPart, p_limit: 50 }
+        );
 
-        if (byKeywordInCategory && byKeywordInCategory.length > 0) {
-          console.log(`[STEP1] ${byKeywordInCategory.length} leads via keyword na categoria em "${cityPart}"`);
-          leadsForQuery = byKeywordInCategory;
+        if (rpcErr) {
+          console.error("[RPC] Erro na busca:", rpcErr.message);
+        } else if (rpcLeads && rpcLeads.length > 0) {
+          console.log(`[RPC] ${rpcLeads.length} leads encontrados para "${cleanKeyword}" em "${cityPart}"`);
+          leadsForQuery = rpcLeads;
         }
 
-        // STEP 2: If no city match, try keyword in category nationwide
+        // If no city-specific results, try nationwide
         if (leadsForQuery.length === 0) {
-          const { data: byKeywordNationwide } = await (supabase.from("leads_geral") as any)
-            .select("*")
-            .ilike("category", `%${cleanKeyword}%`)
-            .limit(50);
+          const { data: rpcNational, error: rpcNatErr } = await (supabase.rpc as any)(
+            "search_leads_geral",
+            { p_keyword: cleanKeyword, p_city: "", p_limit: 50 }
+          );
 
-          if (byKeywordNationwide && byKeywordNationwide.length > 0) {
-            console.log(`[STEP2] ${byKeywordNationwide.length} leads via keyword na categoria (nacional)`);
-            leadsForQuery = byKeywordNationwide;
-          }
-        }
-
-        // STEP 3: Try keyword in name field + city
-        if (leadsForQuery.length === 0) {
-          const { data: byKeywordInName } = await (supabase.from("leads_geral") as any)
-            .select("*")
-            .ilike("name", `%${cleanKeyword}%`)
-            .ilike("city", `%${cityPart}%`)
-            .limit(50);
-
-          if (byKeywordInName && byKeywordInName.length > 0) {
-            console.log(`[STEP3] ${byKeywordInName.length} leads via keyword no nome em "${cityPart}"`);
-            leadsForQuery = byKeywordInName;
-          }
-        }
-
-        // STEP 4: Try mapped category name + city (for generic terms like "dentista" → "Clínica Odontológica")
-        if (leadsForQuery.length === 0) {
-          const mappedCategory = getCategoryFromKeyword(cleanKeyword);
-          if (mappedCategory !== "Comércio local") {
-            const { data: byMappedCategory } = await (supabase.from("leads_geral") as any)
-              .select("*")
-              .ilike("category", `%${mappedCategory}%`)
-              .ilike("city", `%${cityPart}%`)
-              .limit(50);
-
-            if (byMappedCategory && byMappedCategory.length > 0) {
-              console.log(`[STEP4] ${byMappedCategory.length} leads via categoria mapeada "${mappedCategory}" em "${cityPart}"`);
-              leadsForQuery = byMappedCategory;
-            }
+          if (!rpcNatErr && rpcNational && rpcNational.length > 0) {
+            console.log(`[RPC-NATIONAL] ${rpcNational.length} leads encontrados para "${cleanKeyword}" (nacional)`);
+            leadsForQuery = rpcNational;
           }
         }
 
