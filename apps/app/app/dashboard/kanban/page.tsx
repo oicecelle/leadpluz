@@ -17,11 +17,9 @@ import {
   DragEndEvent
 } from "@dnd-kit/core";
 import {
-  SortableContext,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy
+  sortableKeyboardCoordinates
 } from "@dnd-kit/sortable";
-import { Plus, X, Phone, MapPin, Tag, MoreHorizontal } from "lucide-react";
+import { Plus, X, Phone, MapPin, Tag, ArrowRight } from "lucide-react";
 import { formatPhone } from "@repo/utils";
 
 // Column Component
@@ -33,27 +31,27 @@ function KanbanColumn({ col, leads, onCardClick }: any) {
   return (
     <div
       ref={setNodeRef}
-      className="w-[280px] bg-[#111] border border-[#222] rounded-xl flex flex-col max-h-[75vh] flex-shrink-0"
+      className="w-[280px] bg-[#0f0f1a] border border-[rgba(139,69,212,0.12)] rounded-xl flex flex-col max-h-[75vh] flex-shrink-0"
     >
       {/* Header */}
-      <header className="p-4 border-b border-[#222] flex items-center justify-between flex-shrink-0">
+      <header className="p-4 border-b border-[rgba(139,69,212,0.12)] flex items-center justify-between flex-shrink-0">
         <div className="flex items-center space-x-2">
-          <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: col.color || "#333" }} />
+          <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: col.color || "#6b2fb5" }} />
           <h3 className="text-xs font-bold text-white uppercase tracking-wider">{col.title}</h3>
         </div>
-        <span className="text-[10px] bg-[#222] text-gray-400 font-bold px-2 py-0.5 rounded-full">
+        <span className="badge badge-purple px-2 py-0.5 rounded-full text-[10px]">
           {leads.length}
         </span>
       </header>
 
       {/* Cards List */}
-      <div className="flex-1 p-3 overflow-y-auto space-y-3 no-scrollbar">
+      <div className="flex-1 p-3 overflow-y-auto space-y-3 no-scrollbar min-h-[150px]">
         {leads.length > 0 ? (
           leads.map((l: any) => (
             <KanbanCard key={l.id} lead={l} onClick={() => onCardClick(l)} />
           ))
         ) : (
-          <div className="text-center py-8 text-[11px] text-gray-600 border border-dashed border-[#222] rounded-lg">
+          <div className="text-center py-10 text-[11px] text-gray-600 border border-dashed border-[rgba(139,69,212,0.12)] rounded-lg font-medium">
             Sem leads nesta etapa
           </div>
         )}
@@ -70,8 +68,10 @@ function KanbanCard({ lead, onClick }: any) {
 
   const style = transform
     ? {
-        transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
-        opacity: isDragging ? 0.5 : 1
+        transform: `translate3d(${transform.x}px, ${transform.y}px, 0) rotate(2deg)`,
+        opacity: isDragging ? 0.7 : 1,
+        boxShadow: isDragging ? "var(--glow-md)" : undefined,
+        zIndex: 50
       }
     : undefined;
 
@@ -82,25 +82,25 @@ function KanbanCard({ lead, onClick }: any) {
       {...listeners}
       {...attributes}
       onClick={onClick}
-      className="premium-card p-4 space-y-3 cursor-grab active:cursor-grabbing hover:border-gray-600"
+      className="bg-[#141426] border border-[rgba(139,69,212,0.1)] rounded-lg p-4 space-y-3 cursor-grab active:cursor-grabbing hover:border-[rgba(139,69,212,0.5)] hover:shadow-glow-sm transition-all duration-200"
     >
       <div className="flex flex-col space-y-1">
-        <span className="text-sm font-semibold text-white leading-normal truncate">{lead.name}</span>
+        <span className="text-xs font-semibold text-white leading-normal truncate">{lead.name}</span>
         {lead.category && (
-          <span className="text-[10px] text-gray-500 font-medium">{lead.category}</span>
+          <span className="badge badge-purple w-fit py-0 px-2 rounded-full text-[9px] font-bold uppercase tracking-wider">{lead.category}</span>
         )}
       </div>
 
-      <div className="space-y-1.5 pt-2 border-t border-[#222] text-[11px] text-gray-400">
+      <div className="space-y-1.5 pt-2.5 border-t border-[rgba(139,69,212,0.08)] text-[11px] text-gray-400">
         {lead.phone && (
-          <div className="flex items-center space-x-1.5">
-            <Phone className="w-3.5 h-3.5 text-gray-600" />
+          <div className="flex items-center space-x-1.5 font-mono text-[10px]">
+            <Phone className="w-3 h-3 text-gray-500" />
             <span>{formatPhone(lead.phone)}</span>
           </div>
         )}
         {lead.city && (
-          <div className="flex items-center space-x-1.5">
-            <MapPin className="w-3.5 h-3.5 text-gray-600" />
+          <div className="flex items-center space-x-1.5 text-[10px]">
+            <MapPin className="w-3 h-3 text-gray-500" />
             <span className="truncate">
               {lead.city}, {lead.state || ""}
             </span>
@@ -118,18 +118,15 @@ export default function KanbanPage() {
   const [leads, setLeads] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Active dragged card
   const [activeId, setActiveId] = useState<string | null>(null);
 
-  // Detail Modal / Sidebar drawer
   const [selectedLead, setSelectedLead] = useState<any>(null);
   const [drawerNotes, setDrawerNotes] = useState("");
   const noteSaveTimeout = useRef<any>(null);
 
-  // Column creation
   const [showAddColumn, setShowAddColumn] = useState(false);
   const [newColTitle, setNewColTitle] = useState("");
-  const [newColColor, setNewColColor] = useState("#333333");
+  const [newColColor, setNewColColor] = useState("#8b45d4");
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -153,19 +150,17 @@ export default function KanbanPage() {
         setProfile(prof);
 
         if (prof) {
-          // Fetch columns
           let { data: cols } = await (supabase.from("kanban_columns") as any)
             .select("*")
             .eq("user_id", prof.id)
             .order("position", { ascending: true });
 
-          // If no columns, create default ones
           if (!cols || cols.length === 0) {
             const defaults = [
-              { user_id: prof.id, title: "Novo lead", position: 0, color: "#333333" },
-              { user_id: prof.id, title: "Primeiro contato", position: 1, color: "#ff9f43" },
-              { user_id: prof.id, title: "Proposta enviada", position: 2, color: "#00d25b" },
-              { user_id: prof.id, title: "Fechado", position: 3, color: "#0090e7" }
+              { user_id: prof.id, title: "Novo lead", position: 0, color: "#8b45d4" },
+              { user_id: prof.id, title: "Primeiro contato", position: 1, color: "#60a5fa" },
+              { user_id: prof.id, title: "Proposta enviada", position: 2, color: "#fbbf24" },
+              { user_id: prof.id, title: "Fechado", position: 3, color: "#4ade80" }
             ];
             const { data: inserted } = await (supabase.from("kanban_columns") as any)
               .insert(defaults)
@@ -175,7 +170,6 @@ export default function KanbanPage() {
 
           setColumns(cols);
 
-          // Fetch leads
           const { data: userLeads } = await (supabase.from("user_leads") as any)
             .select("*")
             .eq("user_id", prof.id);
@@ -204,18 +198,15 @@ export default function KanbanPage() {
     const leadToMove = leads.find((l) => l.id === leadId);
     if (!leadToMove) return;
 
-    // Check if column exists
     const targetCol = columns.find((c) => c.id === targetColumnId);
     if (!targetCol) return;
 
-    // Update in local state
     setLeads(
       leads.map((l) =>
         l.id === leadId ? { ...l, kanban_column_id: targetColumnId } : l
       )
     );
 
-    // Update in DB
     try {
       const { error } = await (supabase.from("user_leads") as any)
         .update({
@@ -250,7 +241,7 @@ export default function KanbanPage() {
 
       setColumns([...columns, data]);
       setNewColTitle("");
-      setNewColColor("#333333");
+      setNewColColor("#8b45d4");
       setShowAddColumn(false);
     } catch (err: any) {
       alert("Erro ao adicionar coluna: " + err.message);
@@ -262,7 +253,6 @@ export default function KanbanPage() {
     setDrawerNotes(lead.notes || "");
   };
 
-  // Real-time observations saving
   const handleNotesChange = (newVal: string) => {
     setDrawerNotes(newVal);
 
@@ -279,12 +269,11 @@ export default function KanbanPage() {
 
         if (error) throw error;
 
-        // Update local state leads list
         setLeads(leads.map((l) => (l.id === selectedLead.id ? { ...l, notes: newVal } : l)));
       } catch (err: any) {
         console.error("Erro ao salvar observação:", err.message);
       }
-    }, 1000); // 1s debounce
+    }, 1000);
   };
 
   const handleCloseDrawer = () => {
@@ -294,15 +283,17 @@ export default function KanbanPage() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6 flex flex-col h-full relative">
-        {/* Kanban Board header */}
-        <div className="flex justify-between items-center">
-          <div className="text-xs text-gray-500">
-            Arraste os leads entre as colunas para atualizar as etapas.
+      <div className="space-y-6 flex flex-col h-full relative select-none">
+        
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+          <div className="space-y-1">
+            <h1 className="text-lg font-bold text-white">Funil Comercial Kanban</h1>
+            <p className="text-xs text-gray-500">Arraste os leads entre as etapas para atualizar o progresso comercial.</p>
           </div>
           <button
             onClick={() => setShowAddColumn(true)}
-            className="premium-button-primary flex items-center space-x-2 text-xs uppercase"
+            className="btn-primary flex items-center space-x-2 text-xs uppercase py-2 cursor-pointer shadow-glow-sm"
           >
             <Plus className="w-4 h-4" />
             <span>Nova Coluna</span>
@@ -310,14 +301,13 @@ export default function KanbanPage() {
         </div>
 
         {/* Board Columns container */}
-        <div className="flex-1 flex overflow-x-auto space-x-6 pb-6 items-start no-scrollbar">
+        <div className="flex-1 flex overflow-x-auto space-x-6 pb-6 items-start no-scrollbar min-h-[500px]">
           <DndContext
             sensors={sensors}
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
           >
             {columns.map((col) => {
-              // Group leads in this column
               const colLeads = leads
                 .filter((l) => l.kanban_column_id === col.id)
                 .sort((a, b) => a.kanban_position - b.kanban_position);
@@ -331,116 +321,129 @@ export default function KanbanPage() {
                 />
               );
             })}
-
-            {/* Drag overlay to display styled card during drag */}
-            <DragOverlay>
-              {activeId ? (
-                <div className="premium-card p-4 space-y-3 shadow-2xl opacity-80 border-white">
-                  <span className="text-sm font-semibold text-white leading-normal truncate">
-                    {leads.find((l) => l.id === activeId)?.name}
-                  </span>
-                </div>
-              ) : null}
-            </DragOverlay>
           </DndContext>
         </div>
 
-        {/* Drawer Detail Sidebar */}
-        {selectedLead && (
-          <div className="fixed inset-y-0 right-0 w-[420px] bg-[#111] border-l border-[#222] z-50 flex flex-col justify-between shadow-2xl">
-            <div>
-              <header className="p-6 border-b border-[#222] flex items-center justify-between">
-                <div className="flex flex-col">
-                  <span className="text-sm font-bold text-white uppercase tracking-wider">
-                    Detalhes do Lead
+        {/* Drag overlay */}
+        <DndContext>
+          <DragOverlay>
+            {activeId ? (
+              <div className="bg-[#141426] border border-[#a855f7]/50 rounded-lg p-4 space-y-3 shadow-glow-md rotate-[2deg] opacity-90 cursor-grabbing">
+                <div className="flex flex-col space-y-1">
+                  <span className="text-xs font-semibold text-white leading-normal truncate">
+                    {leads.find((l) => l.id === activeId)?.name}
                   </span>
-                  <span className="text-xs text-gray-500 mt-1">{selectedLead.name}</span>
-                </div>
-                <button
-                  onClick={handleCloseDrawer}
-                  className="text-gray-500 hover:text-white transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </header>
-
-              <div className="p-6 space-y-6 overflow-y-auto max-h-[75vh] no-scrollbar">
-                {/* Details list */}
-                <div className="space-y-4">
-                  <div className="flex flex-col space-y-1">
-                    <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
-                      Telefone
-                    </span>
-                    <span className="text-sm text-white">
-                      {selectedLead.phone ? formatPhone(selectedLead.phone) : "—"}
-                    </span>
-                  </div>
-
-                  <div className="flex flex-col space-y-1">
-                    <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
-                      E-mail
-                    </span>
-                    <span className="text-sm text-white">{selectedLead.email || "—"}</span>
-                  </div>
-
-                  <div className="flex flex-col space-y-1">
-                    <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
-                      Categoria / Localização
-                    </span>
-                    <span className="text-sm text-white">
-                      {selectedLead.category || "—"} |{" "}
-                      {selectedLead.city ? `${selectedLead.city}, ${selectedLead.state || ""}` : "—"}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Real-time Notes */}
-                <div className="flex flex-col space-y-2 pt-4 border-t border-[#222]">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
-                      Observações
-                    </span>
-                    <span className="text-[9px] text-gray-500 font-mono">(salva em tempo real)</span>
-                  </div>
-                  <textarea
-                    rows={4}
-                    value={drawerNotes}
-                    onChange={(e) => handleNotesChange(e.target.value)}
-                    placeholder="Escreva notas e histórico comercial deste lead..."
-                    className="premium-input text-xs"
-                  ></textarea>
                 </div>
               </div>
-            </div>
+            ) : null}
+          </DragOverlay>
+        </DndContext>
 
-            <div className="p-6 border-t border-[#222] bg-[#161616] flex flex-col space-y-3">
-              <button
-                onClick={() => router.push("/dashboard/agendamentos")}
-                className="w-full premium-button-primary text-xs uppercase"
-              >
-                Agendar Call
-              </button>
-              <button
-                onClick={() => router.push("/dashboard/disparos")}
-                className="w-full premium-button-secondary text-xs uppercase"
-              >
-                Iniciar Disparo
-              </button>
+        {/* Drawer Detail Sidebar - Slide Panel */}
+        {selectedLead && (
+          <>
+            {/* Backdrop click-out */}
+            <div 
+              onClick={handleCloseDrawer} 
+              className="fixed inset-0 bg-black/60 backdrop-blur-xs z-40 transition-opacity"
+            ></div>
+            
+            <div className="fixed inset-y-0 right-0 w-[380px] bg-[#0f0f1a] border-l border-[rgba(139,69,212,0.22)] z-50 flex flex-col justify-between shadow-glow-lg animate-in slide-in-from-right duration-300">
+              <div>
+                <header className="p-6 border-b border-[rgba(139,69,212,0.12)] flex items-center justify-between">
+                  <div className="flex flex-col space-y-0.5">
+                    <span className="text-xs font-bold text-white uppercase tracking-wider">
+                      Detalhes do Lead
+                    </span>
+                    <span className="text-sm font-bold text-purple-300 truncate max-w-[280px]">{selectedLead.name}</span>
+                  </div>
+                  <button
+                    onClick={handleCloseDrawer}
+                    className="text-gray-500 hover:text-white transition-colors cursor-pointer"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </header>
+
+                <div className="p-6 space-y-5 overflow-y-auto max-h-[70vh] no-scrollbar">
+                  <div className="space-y-4">
+                    <div className="flex flex-col space-y-1">
+                      <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+                        Telefone
+                      </span>
+                      <span className="text-xs font-semibold text-white font-mono">
+                        {selectedLead.phone ? formatPhone(selectedLead.phone) : "—"}
+                      </span>
+                    </div>
+
+                    <div className="flex flex-col space-y-1">
+                      <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+                        E-mail
+                      </span>
+                      <span className="text-xs font-semibold text-white truncate">{selectedLead.email || "—"}</span>
+                    </div>
+
+                    <div className="flex flex-col space-y-1">
+                      <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+                        Categoria / Localização
+                      </span>
+                      <span className="text-xs font-semibold text-white">
+                        {selectedLead.category || "—"} |{" "}
+                        {selectedLead.city ? `${selectedLead.city}, ${selectedLead.state || ""}` : "—"}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Real-time Notes */}
+                  <div className="flex flex-col space-y-2 pt-4 border-t border-[rgba(139,69,212,0.12)]">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+                        Observações
+                      </span>
+                      <span className="text-[9px] text-purple-400 font-mono font-bold uppercase tracking-wider">(salva automático)</span>
+                    </div>
+                    <textarea
+                      rows={5}
+                      value={drawerNotes}
+                      onChange={(e) => handleNotesChange(e.target.value)}
+                      placeholder="Histórico comercial, detalhes do contato..."
+                      className="input text-xs"
+                    ></textarea>
+                  </div>
+                </div>
+              </div>
+
+              {/* Drawer actions */}
+              <div className="p-6 border-t border-[rgba(139,69,212,0.12)] bg-[#0a0a0f] flex flex-col space-y-3">
+                <button
+                  onClick={() => router.push("/dashboard/agendamentos")}
+                  className="w-full btn-primary text-xs py-3 font-semibold uppercase tracking-wider justify-center shadow-glow-sm cursor-pointer"
+                >
+                  <span>Agendar Call</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => router.push("/dashboard/disparos")}
+                  className="w-full btn-secondary text-xs py-3 font-semibold uppercase tracking-wider justify-center cursor-pointer"
+                >
+                  <span>Iniciar Disparo</span>
+                </button>
+              </div>
             </div>
-          </div>
+          </>
         )}
 
         {/* Add Column Modal */}
         {showAddColumn && (
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="w-full max-w-sm bg-[#111] border border-[#222] rounded-xl overflow-hidden shadow-2xl">
-              <header className="px-6 py-4 border-b border-[#222] flex items-center justify-between">
+          <div className="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="w-full max-w-sm bg-[#0f0f1a] border border-[rgba(139,69,212,0.22)] rounded-xl overflow-hidden shadow-glow-sm animate-in scale-in duration-200">
+              <header className="px-6 py-4 border-b border-[rgba(139,69,212,0.12)] flex items-center justify-between">
                 <h3 className="text-sm font-bold uppercase tracking-wider text-white">
                   Nova Coluna
                 </h3>
                 <button
                   onClick={() => setShowAddColumn(false)}
-                  className="text-gray-500 hover:text-white transition-colors"
+                  className="text-gray-500 hover:text-white transition-colors cursor-pointer"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -455,31 +458,34 @@ export default function KanbanPage() {
                     value={newColTitle}
                     onChange={(e) => setNewColTitle(e.target.value)}
                     placeholder="Ex: Contato via WhatsApp"
-                    className="premium-input"
+                    className="input"
                   />
                 </div>
 
-                <div className="flex flex-col space-y-1">
+                <div className="flex flex-col space-y-1.5">
                   <label className="text-[10px] font-bold text-gray-500 uppercase">Cor identificadora</label>
-                  <input
-                    type="color"
-                    value={newColColor}
-                    onChange={(e) => setNewColColor(e.target.value)}
-                    className="w-12 h-10 border border-[#222] rounded-lg bg-transparent cursor-pointer"
-                  />
+                  <div className="flex items-center space-x-3">
+                    <input
+                      type="color"
+                      value={newColColor}
+                      onChange={(e) => setNewColColor(e.target.value)}
+                      className="w-12 h-10 border border-[rgba(139,69,212,0.22)] rounded-lg bg-transparent cursor-pointer"
+                    />
+                    <span className="text-xs text-gray-400 font-mono font-medium">{newColColor}</span>
+                  </div>
                 </div>
 
-                <div className="flex justify-end space-x-3 pt-4 border-t border-[#222]">
+                <div className="flex justify-end space-x-3 pt-4 border-t border-[rgba(139,69,212,0.12)]">
                   <button
                     type="button"
                     onClick={() => setShowAddColumn(false)}
-                    className="premium-button-secondary text-xs uppercase"
+                    className="btn-secondary text-xs uppercase"
                   >
                     Cancelar
                   </button>
                   <button
                     type="submit"
-                    className="premium-button-primary text-xs uppercase"
+                    className="btn-primary text-xs uppercase py-2.5 px-4 cursor-pointer"
                   >
                     Adicionar Coluna
                   </button>

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@repo/supabase";
 import DashboardLayout from "../../../components/DashboardLayout";
-import { User, CreditCard, HelpCircle, Key, RefreshCw, Send, Check } from "lucide-react";
+import { User, CreditCard, HelpCircle, Key, ChevronRight, Check } from "lucide-react";
 
 export default function ConfigPage() {
   const [profile, setProfile] = useState<any>(null);
@@ -35,7 +35,6 @@ export default function ConfigPage() {
           setAvatarUrl(prof.avatar_url || "");
         }
 
-        // Fetch support tickets
         const { data: ticks } = await (supabase.from("support_tickets") as any)
           .select("*")
           .eq("user_id", session.user.id)
@@ -121,23 +120,26 @@ export default function ConfigPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
-        <div className="w-8 h-8 border border-t-white border-r-[#222] border-b-[#222] border-l-[#222] rounded-full animate-spin"></div>
+      <div className="min-h-screen bg-[#050508] flex items-center justify-center">
+        <div className="w-8 h-8 border border-t-purple-500 border-r-purple-900/30 border-b-purple-900/30 border-l-purple-900/30 rounded-full animate-spin"></div>
       </div>
     );
   }
 
   return (
     <DashboardLayout>
-      <div className="space-y-8 max-w-4xl">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+      <div className="space-y-6 max-w-4xl select-none animate-in fade-in duration-200">
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          
           {/* Left Column: Account Details */}
           <div className="space-y-6">
+            
             {/* Profile form */}
-            <div className="premium-card p-6 space-y-4">
-              <div className="flex items-center space-x-2 border-b border-[#222] pb-3 mb-2">
-                <User className="w-4 h-4 text-gray-400" />
-                <h3 className="text-sm font-bold uppercase tracking-wider text-white">Minha Conta</h3>
+            <div className="card p-6 space-y-4">
+              <div className="flex items-center space-x-2 border-b border-[rgba(139,69,212,0.12)] pb-3.5 mb-2">
+                <User className="w-4 h-4 text-purple-400" />
+                <h3 className="text-xs font-bold uppercase tracking-wider text-white">Minha Conta</h3>
               </div>
 
               <form onSubmit={handleUpdateProfile} className="space-y-4">
@@ -148,7 +150,7 @@ export default function ConfigPage() {
                     required
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="premium-input"
+                    className="input text-xs"
                   />
                 </div>
 
@@ -158,7 +160,7 @@ export default function ConfigPage() {
                     type="email"
                     disabled
                     value={profile?.email || ""}
-                    className="premium-input opacity-40 cursor-not-allowed"
+                    className="input text-xs opacity-40 cursor-not-allowed border-[rgba(255,255,255,0.02)]"
                   />
                 </div>
 
@@ -168,21 +170,26 @@ export default function ConfigPage() {
                     type="text"
                     value={avatarUrl}
                     onChange={(e) => setAvatarUrl(e.target.value)}
-                    className="premium-input"
+                    placeholder="https://suaimagem.com/avatar.jpg"
+                    className="input text-xs"
                   />
                 </div>
 
-                <button type="submit" disabled={saving} className="premium-button-primary text-xs uppercase">
+                <button 
+                  type="submit" 
+                  disabled={saving} 
+                  className="btn-primary text-xs uppercase px-4 py-2 cursor-pointer mt-2"
+                >
                   {saving ? "Salvando..." : "Atualizar Cadastro"}
                 </button>
               </form>
             </div>
 
             {/* Password change */}
-            <div className="premium-card p-6 space-y-4">
-              <div className="flex items-center space-x-2 border-b border-[#222] pb-3 mb-2">
-                <Key className="w-4 h-4 text-gray-400" />
-                <h3 className="text-sm font-bold uppercase tracking-wider text-white">Alterar Senha</h3>
+            <div className="card p-6 space-y-4">
+              <div className="flex items-center space-x-2 border-b border-[rgba(139,69,212,0.12)] pb-3.5 mb-2">
+                <Key className="w-4 h-4 text-purple-400" />
+                <h3 className="text-xs font-bold uppercase tracking-wider text-white">Alterar Senha</h3>
               </div>
 
               <form onSubmit={handleChangePassword} className="space-y-4">
@@ -194,11 +201,15 @@ export default function ConfigPage() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Mínimo 6 caracteres"
-                    className="premium-input"
+                    className="input text-xs"
                   />
                 </div>
 
-                <button type="submit" disabled={saving} className="premium-button-secondary text-xs uppercase">
+                <button 
+                  type="submit" 
+                  disabled={saving} 
+                  className="btn-secondary text-xs uppercase px-4 py-2 cursor-pointer mt-2"
+                >
                   Alterar Senha
                 </button>
               </form>
@@ -207,33 +218,36 @@ export default function ConfigPage() {
 
           {/* Right Column: Billing & Support */}
           <div className="space-y-6">
+            
             {/* Subscription details */}
-            <div className="premium-card p-6 space-y-4">
-              <div className="flex items-center space-x-2 border-b border-[#222] pb-3 mb-2">
-                <CreditCard className="w-4 h-4 text-gray-400" />
-                <h3 className="text-sm font-bold uppercase tracking-wider text-white">Assinatura</h3>
+            <div className="card p-6 space-y-4">
+              <div className="flex items-center space-x-2 border-b border-[rgba(139,69,212,0.12)] pb-3.5 mb-2">
+                <CreditCard className="w-4 h-4 text-purple-400" />
+                <h3 className="text-xs font-bold uppercase tracking-wider text-white">Assinatura do Plano</h3>
               </div>
 
-              <div className="space-y-3">
+              <div className="space-y-3.5">
                 <div className="flex justify-between items-center text-xs">
-                  <span className="text-gray-400">Plano Atual:</span>
-                  <span className="text-white font-bold uppercase tracking-wider">{profile?.plan}</span>
+                  <span className="text-gray-500 font-medium">Plano Contratado:</span>
+                  <span className="gradient-text font-extrabold uppercase tracking-wide text-sm">{profile?.plan}</span>
                 </div>
+                
                 <div className="flex justify-between items-center text-xs">
-                  <span className="text-gray-400">Status:</span>
+                  <span className="text-gray-500 font-medium">Status da Assinatura:</span>
                   <span
-                    className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${
+                    className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
                       profile?.plan_status === "active"
-                        ? "bg-green-950/20 text-green-500 border border-green-500/20"
-                        : "bg-red-950/20 text-red-500 border border-red-500/20"
+                        ? "bg-[#051505] text-[#4ade80] border-[rgba(34,197,94,0.3)]"
+                        : "bg-[#150505] text-[#f87171] border-[rgba(239,68,68,0.3)]"
                     }`}
                   >
-                    {profile?.plan_status}
+                    {profile?.plan_status === "active" ? "● Ativo" : "Inativo"}
                   </span>
                 </div>
+
                 <div className="flex justify-between items-center text-xs">
-                  <span className="text-gray-400">Renovação:</span>
-                  <span className="text-white">
+                  <span className="text-gray-500 font-medium">Data de Renovação:</span>
+                  <span className="text-white font-medium">
                     {profile?.plan_expires_at
                       ? new Date(profile.plan_expires_at).toLocaleDateString("pt-BR")
                       : "—"}
@@ -243,10 +257,10 @@ export default function ConfigPage() {
             </div>
 
             {/* Support section */}
-            <div className="premium-card p-6 space-y-4">
-              <div className="flex items-center space-x-2 border-b border-[#222] pb-3 mb-2">
-                <HelpCircle className="w-4 h-4 text-gray-400" />
-                <h3 className="text-sm font-bold uppercase tracking-wider text-white">Suporte Técnico</h3>
+            <div className="card p-6 space-y-4">
+              <div className="flex items-center space-x-2 border-b border-[rgba(139,69,212,0.12)] pb-3.5 mb-2">
+                <HelpCircle className="w-4 h-4 text-purple-400" />
+                <h3 className="text-xs font-bold uppercase tracking-wider text-white">Suporte Técnico</h3>
               </div>
 
               <form onSubmit={handleOpenTicket} className="space-y-4">
@@ -258,7 +272,7 @@ export default function ConfigPage() {
                     value={ticketSubject}
                     onChange={(e) => setTicketSubject(e.target.value)}
                     placeholder="Qual a sua dúvida ou problema?"
-                    className="premium-input text-xs"
+                    className="input text-xs"
                   />
                 </div>
 
@@ -270,38 +284,43 @@ export default function ConfigPage() {
                     value={ticketMessage}
                     onChange={(e) => setTicketMessage(e.target.value)}
                     placeholder="Descreva com detalhes..."
-                    className="premium-input text-xs"
+                    className="input text-xs"
                   ></textarea>
                 </div>
 
-                <button type="submit" disabled={saving} className="premium-button-primary text-xs uppercase w-full">
+                <button 
+                  type="submit" 
+                  disabled={saving} 
+                  className="btn-primary text-xs uppercase w-full justify-center py-2.5 cursor-pointer shadow-glow-sm"
+                >
                   Abrir Ticket
                 </button>
               </form>
 
               {/* Tickets list */}
               {tickets.length > 0 && (
-                <div className="space-y-3 pt-4 border-t border-[#222] max-h-[200px] overflow-y-auto no-scrollbar">
+                <div className="space-y-3 pt-4 border-t border-[rgba(139,69,212,0.12)] max-h-[220px] overflow-y-auto no-scrollbar">
+                  <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1">Chamados Abertos</span>
                   {tickets.map((t) => (
-                    <div key={t.id} className="p-3 bg-[#161616] border border-[#222] rounded-lg text-xs space-y-2">
+                    <div key={t.id} className="p-3.5 bg-[#141426]/50 border border-[rgba(139,69,212,0.08)] rounded-lg text-xs space-y-2">
                       <div className="flex justify-between items-center">
-                        <span className="font-bold text-white">{t.subject}</span>
+                        <span className="font-bold text-white uppercase tracking-wide text-[11px]">{t.subject}</span>
                         <span
-                          className={`text-[9px] uppercase font-bold px-1.5 py-0.5 rounded ${
+                          className={`text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded-full border ${
                             t.status === "open"
-                              ? "bg-yellow-950/20 text-yellow-500"
-                              : t.status === "closed"
-                                ? "bg-gray-800 text-gray-400"
-                                : "bg-blue-950/20 text-blue-500"
+                              ? "bg-[#150f00] text-[#fbbf24] border-[rgba(245,158,11,0.2)]"
+                              : "bg-[#0a0a0f] text-gray-400 border-[rgba(255,255,255,0.06)]"
                           }`}
                         >
-                          {t.status}
+                          {t.status === "open" ? "Aberto" : "Resolvido"}
                         </span>
                       </div>
-                      <p className="text-gray-400">{t.message}</p>
+                      <p className="text-gray-400 font-medium text-[11px] leading-relaxed">{t.message}</p>
+                      
                       {t.admin_reply && (
-                        <div className="p-2 bg-[#222] border-l-2 border-white text-gray-300 mt-2">
-                          <strong>Suporte:</strong> {t.admin_reply}
+                        <div className="p-3 bg-[#0a0a0f] border-l-2 border-[#a855f7] text-[11px] text-purple-300 mt-2.5 rounded-r-lg">
+                          <strong className="font-bold block text-white uppercase tracking-wider text-[9px] mb-1">Resposta do Suporte:</strong> 
+                          {t.admin_reply}
                         </div>
                       )}
                     </div>

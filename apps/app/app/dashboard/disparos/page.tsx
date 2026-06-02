@@ -11,7 +11,11 @@ import {
   Plus,
   Trash2,
   HelpCircle,
-  MessageSquare
+  MessageSquare,
+  Smartphone,
+  Layers,
+  ChevronRight,
+  Info
 } from "lucide-react";
 
 interface Step {
@@ -94,11 +98,9 @@ export default function DisparosPage() {
     loadProfileData();
   }, []);
 
-  // Fetch categories, flows and jobs
   useEffect(() => {
     if (!profile) return;
     const loadDashboardData = async () => {
-      // 1. Fetch categories
       const { data: leadsData } = await (supabase.from("user_leads") as any)
         .select("category")
         .eq("user_id", profile.id);
@@ -107,7 +109,6 @@ export default function DisparosPage() {
         setCategories(unique as string[]);
       }
 
-      // 2. Fetch flows
       const { data: flowsData } = await (supabase.from("dispatch_flows") as any)
         .select("*")
         .eq("user_id", profile.id);
@@ -122,7 +123,6 @@ export default function DisparosPage() {
         setFlowName("Fluxo de Disparo Padrão");
       }
 
-      // 3. Fetch jobs
       const { data: jobsData } = await (supabase.from("dispatch_jobs") as any)
         .select("*, dispatch_flows(name)")
         .eq("user_id", profile.id)
@@ -132,7 +132,6 @@ export default function DisparosPage() {
     loadDashboardData();
   }, [profile]);
 
-  // Load steps when selectedFlowId changes
   useEffect(() => {
     if (!selectedFlowId) {
       setSteps([
@@ -201,13 +200,11 @@ export default function DisparosPage() {
       };
 
       if (flowId) {
-        // Update flow
         const { error } = await (supabase.from("dispatch_flows") as any)
           .update(flowPayload)
           .eq("id", flowId);
         if (error) throw error;
       } else {
-        // Create flow
         const { data, error } = await (supabase.from("dispatch_flows") as any)
           .insert([flowPayload])
           .select()
@@ -218,13 +215,11 @@ export default function DisparosPage() {
         setFlows([...flows, data]);
       }
 
-      // Delete existing steps
       const { error: delErr } = await (supabase.from("dispatch_steps") as any)
         .delete()
         .eq("flow_id", flowId);
       if (delErr) throw delErr;
 
-      // Insert new steps
       const stepsPayload = steps.map((step, idx) => ({
         flow_id: flowId,
         position: idx,
@@ -250,7 +245,6 @@ export default function DisparosPage() {
     }
   };
 
-  // Recalculate target leads on filter change
   useEffect(() => {
     const calculateLeads = async () => {
       if (!profile) return;
@@ -275,10 +269,8 @@ export default function DisparosPage() {
 
   const handleConnectWhatsApp = async () => {
     setInstanceStatus("connecting");
-    // Simulate loading QR Code
     setQrCodeUrl("https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=LEADPLUZ-Uazapi-Connection-Simulation");
 
-    // Simulate polling connection scan after 8 seconds
     setTimeout(async () => {
       if (!profile) return;
       try {
@@ -353,7 +345,6 @@ export default function DisparosPage() {
     }
 
     try {
-      // 1. Insert dispatch_jobs
       const { data: job, error: jobErr } = await (supabase.from("dispatch_jobs") as any)
         .insert([{
           user_id: profile.id,
@@ -371,7 +362,6 @@ export default function DisparosPage() {
 
       if (jobErr) throw jobErr;
 
-      // 2. Fetch targeted leads
       let query = (supabase.from("user_leads") as any)
         .select("id")
         .eq("user_id", profile.id);
@@ -390,7 +380,6 @@ export default function DisparosPage() {
       const { data: targetLeads, error: leadsErr } = await query;
       if (leadsErr) throw leadsErr;
 
-      // 3. Insert lead jobs
       if (targetLeads && targetLeads.length > 0) {
         const leadJobs = targetLeads.map((l: any) => ({
           job_id: job.id,
@@ -403,7 +392,6 @@ export default function DisparosPage() {
         if (ljErr) throw ljErr;
       }
 
-      // 4. Update local jobs state
       const jobWithFlowName = {
         ...job,
         dispatch_flows: { name: flowName }
@@ -418,85 +406,106 @@ export default function DisparosPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
-        <div className="w-8 h-8 border border-t-white border-r-[#222] border-b-[#222] border-l-[#222] rounded-full animate-spin"></div>
+      <div className="min-h-screen bg-[#050508] flex items-center justify-center">
+        <div className="w-8 h-8 border border-t-purple-500 border-r-purple-900/30 border-b-purple-900/30 border-l-purple-900/30 rounded-full animate-spin"></div>
       </div>
     );
   }
 
   return (
     <DashboardLayout>
-      <div className="space-y-8 max-w-4xl">
-        {/* Selector Header */}
-        <div className="premium-card p-4 flex items-center justify-between">
-          <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Interface de Disparos:</span>
-          <div className="flex space-x-2">
+      <div className="space-y-6 max-w-4xl select-none">
+        
+        {/* Header de Configuração de API */}
+        <div className="card p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Interface de Disparos:</span>
+          
+          <div className="bg-[#141426] p-1 rounded-full border border-[rgba(255,255,255,0.06)] flex space-x-1">
             {(["unofficial", "official"] as const).map((type) => (
               <button
                 key={type}
                 type="button"
                 onClick={() => setApiType(type)}
-                className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider border transition-all duration-150 ${
+                className={`px-4 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wider transition-all duration-150 cursor-pointer ${
                   apiType === type
-                    ? "bg-white text-black border-white"
-                    : "bg-[#111] text-gray-400 border-[#222] hover:text-white"
+                    ? "btn-primary shadow-glow-sm"
+                    : "bg-transparent text-gray-400 hover:text-white"
                 }`}
               >
-                {type === "unofficial" ? "WhatsApp Não Oficial (Uazapi)" : "WhatsApp Oficial (Meta / Chatwoot)"}
+                {type === "unofficial" ? "WhatsApp Não Oficial" : "WhatsApp Oficial (API)"}
               </button>
             ))}
           </div>
         </div>
 
-        {/* Unofficial API section */}
+        {/* Unofficial API Panel */}
         {apiType === "unofficial" && (
           <div className="space-y-6">
+            
             {/* Warning block */}
-            <div className="flex items-start space-x-3 p-4 bg-yellow-950/20 border border-yellow-500/30 rounded-xl text-yellow-500 text-xs leading-relaxed">
-              <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+            <div className="flex items-start space-x-3 p-4 bg-yellow-950/15 border border-yellow-500/20 rounded-xl text-[#fbbf24] text-xs leading-relaxed animate-in fade-in duration-200">
+              <AlertTriangle className="w-5 h-5 flex-shrink-0 text-[#fbbf24]" />
               <div>
-                <strong>Atenção:</strong> Disparos via API não oficial correm risco de banimento permanente do número. Recomendamos usar a API Oficial ou limitar a no máximo 50 mensagens por dia.
+                <strong className="font-bold">Atenção sobre API Não Oficial:</strong> Disparos via conexões não oficiais correm risco de banimento de número do WhatsApp. Recomendamos aquecer o chip e limitar o disparo diário a no máximo 50 mensagens.
               </div>
             </div>
 
             {/* Connection panel */}
-            <div className="premium-card p-6 flex flex-col md:flex-row items-center justify-between gap-6">
-              <div className="space-y-2">
-                <h3 className="text-sm font-bold uppercase text-white tracking-wider">Conexão do WhatsApp</h3>
-                <div className="flex items-center space-x-2">
-                  <span className="text-xs text-gray-400">Status atual:</span>
-                  <span
-                    className={`text-xs font-bold uppercase tracking-wide px-2 py-0.5 rounded ${
+            <div className="card p-6 flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden">
+              <div className="space-y-2.5">
+                <h3 className="text-xs font-bold uppercase text-white tracking-wider flex items-center space-x-2">
+                  <Smartphone className="w-4 h-4 text-[#a855f7]" />
+                  <span>Conexão do WhatsApp (Instância Uazapi)</span>
+                </h3>
+                <div className="flex items-center space-x-2.5">
+                  <span className="text-xs text-gray-500">Status do canal:</span>
+                  <div className="flex items-center space-x-1.5">
+                    <span className={`w-2 h-2 rounded-full ${
                       instanceStatus === "connected"
-                        ? "bg-green-950/20 text-green-500 border border-green-500/20"
+                        ? "bg-[#4ade80] animate-pulse"
                         : instanceStatus === "connecting"
-                          ? "bg-yellow-950/20 text-yellow-500 border border-yellow-500/20 animate-pulse"
-                          : "bg-red-950/20 text-red-500 border border-red-500/20"
-                    }`}
-                  >
-                    {instanceStatus === "connected"
-                      ? "Conectado"
-                      : instanceStatus === "connecting"
-                        ? "Carregando QR..."
-                        : "Desconectado"}
-                  </span>
+                          ? "bg-[#fbbf24] animate-pulse"
+                          : "bg-[#f87171]"
+                    }`} />
+                    <span className={`text-[10px] font-bold uppercase tracking-wider ${
+                      instanceStatus === "connected"
+                        ? "text-[#4ade80]"
+                        : instanceStatus === "connecting"
+                          ? "text-[#fbbf24]"
+                          : "text-[#f87171]"
+                    }`}>
+                      {instanceStatus === "connected"
+                        ? "Conectado"
+                        : instanceStatus === "connecting"
+                          ? "Gerando QR Code..."
+                          : "Desconectado"}
+                    </span>
+                  </div>
                 </div>
               </div>
 
               <div>
                 {instanceStatus === "disconnected" && (
-                  <button onClick={handleConnectWhatsApp} className="premium-button-primary uppercase text-xs">
+                  <button 
+                    onClick={handleConnectWhatsApp} 
+                    className="btn-primary uppercase text-xs shadow-glow-sm cursor-pointer"
+                  >
                     Conectar WhatsApp
                   </button>
                 )}
                 {instanceStatus === "connecting" && qrCodeUrl && (
-                  <div className="flex flex-col items-center space-y-2 bg-white p-4 rounded-xl">
-                    <img src={qrCodeUrl} alt="QR Code" className="w-[200px] h-[200px]" />
-                    <span className="text-[10px] text-black font-semibold">Escaneie com seu WhatsApp</span>
+                  <div className="flex flex-col items-center space-y-3 bg-white p-5 rounded-xl shadow-glow-md">
+                    <img src={qrCodeUrl} alt="QR Code" className="w-[180px] h-[180px]" />
+                    <span className="text-[10px] text-black font-extrabold uppercase tracking-wider">
+                      Escaneie para conectar
+                    </span>
                   </div>
                 )}
                 {instanceStatus === "connected" && (
-                  <button onClick={handleDisconnectWhatsApp} className="premium-button-secondary uppercase text-xs">
+                  <button 
+                    onClick={handleDisconnectWhatsApp} 
+                    className="btn-secondary text-xs uppercase cursor-pointer hover:border-red-500/40 hover:text-red-400"
+                  >
                     Desconectar Número
                   </button>
                 )}
@@ -504,15 +513,19 @@ export default function DisparosPage() {
             </div>
 
             {/* Target selection */}
-            <div className="premium-card p-6 space-y-4">
-              <h3 className="text-sm font-bold uppercase text-white tracking-wider">Público do Disparo</h3>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="card p-6 space-y-4">
+              <h3 className="text-xs font-bold uppercase text-white tracking-wider flex items-center space-x-2">
+                <Layers className="w-4 h-4 text-[#a855f7]" />
+                <span>Público Alvo do Disparo</span>
+              </h3>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="flex flex-col space-y-1">
-                  <label className="text-[10px] font-bold text-gray-500 uppercase">Por Status</label>
+                  <label className="text-[10px] font-bold text-gray-500 uppercase">Filtrar por Status</label>
                   <select
                     value={filterStatus}
                     onChange={(e) => setFilterStatus(e.target.value)}
-                    className="premium-input text-xs"
+                    className="input text-xs cursor-pointer"
                   >
                     <option value="all">Todos os Status</option>
                     <option value="new">Novo</option>
@@ -523,11 +536,11 @@ export default function DisparosPage() {
                   </select>
                 </div>
                 <div className="flex flex-col space-y-1">
-                  <label className="text-[10px] font-bold text-gray-500 uppercase">Por Categoria</label>
+                  <label className="text-[10px] font-bold text-gray-500 uppercase">Filtrar por Categoria</label>
                   <select
                     value={filterCategory}
                     onChange={(e) => setFilterCategory(e.target.value)}
-                    className="premium-input text-xs"
+                    className="input text-xs cursor-pointer"
                   >
                     <option value="all">Todas as Categorias</option>
                     {categories.map((c) => (
@@ -543,26 +556,26 @@ export default function DisparosPage() {
                     type="number"
                     value={limitCount}
                     onChange={(e) => setLimitCount(e.target.value)}
-                    className="premium-input text-xs"
+                    className="input text-xs"
                   />
                 </div>
-                <div className="flex flex-col justify-end p-2 bg-[#161616] border border-[#222] rounded-lg text-center">
-                  <span className="text-xs text-gray-400">Total Leads no Preview</span>
-                  <span className="text-lg font-bold text-white mt-1">{targetLeadsCount} Leads</span>
+                <div className="flex flex-col justify-center p-3.5 bg-[#0a0a0f] border border-[rgba(139,69,212,0.12)] rounded-lg text-center">
+                  <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Leads Selecionados</span>
+                  <span className="text-xl font-extrabold text-white mt-1.5">{targetLeadsCount} Contatos</span>
                 </div>
               </div>
             </div>
 
             {/* Step builder */}
-            <div className="premium-card p-6 space-y-6">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#222] pb-4">
+            <div className="card p-6 space-y-6 relative">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[rgba(139,69,212,0.12)] pb-4">
                 <div className="flex-1 space-y-2">
-                  <label className="text-[10px] font-bold text-gray-500 uppercase">Selecionar ou Criar Fluxo</label>
-                  <div className="flex space-x-2">
+                  <label className="text-[10px] font-bold text-gray-500 uppercase">Fluxo de Disparo</label>
+                  <div className="flex flex-wrap gap-2.5">
                     <select
                       value={selectedFlowId}
                       onChange={(e) => setSelectedFlowId(e.target.value)}
-                      className="premium-input text-xs max-w-xs"
+                      className="input text-xs max-w-xs cursor-pointer"
                     >
                       <option value="">+ Criar Novo Fluxo</option>
                       {flows.map((f) => (
@@ -576,13 +589,13 @@ export default function DisparosPage() {
                       placeholder="Nome do fluxo..."
                       value={flowName}
                       onChange={(e) => setFlowName(e.target.value)}
-                      className="premium-input text-xs max-w-xs"
+                      className="input text-xs max-w-xs"
                     />
                     <button
                       type="button"
                       onClick={handleSaveFlow}
                       disabled={savingFlow}
-                      className="premium-button-secondary text-xs uppercase"
+                      className="btn-secondary text-xs uppercase font-bold px-4 py-2 cursor-pointer"
                     >
                       {savingFlow ? "Salvando..." : "Salvar Fluxo"}
                     </button>
@@ -592,24 +605,36 @@ export default function DisparosPage() {
                 <button
                   type="button"
                   onClick={handleAddStep}
-                  className="premium-button-secondary flex items-center space-x-2 text-xs uppercase self-end"
+                  className="btn-secondary flex items-center space-x-2 text-xs uppercase font-bold py-2 px-3.5 cursor-pointer self-end"
                 >
                   <Plus className="w-4 h-4" />
                   <span>Adicionar Etapa</span>
                 </button>
               </div>
 
-              <div className="space-y-4">
+              {/* Vertical connected steps timeline */}
+              <div className="relative pl-10 space-y-8">
+                {/* Connecting vertical line */}
+                <div className="absolute left-[13px] top-4 bottom-4 w-[2px] bg-gradient-to-b from-[#6b2fb5] to-[rgba(139,69,212,0.1)] pointer-events-none"></div>
+
                 {steps.map((step, idx) => (
-                  <div key={step.id} className="p-4 bg-[#161616] border border-[#222] rounded-xl space-y-4">
+                  <div key={step.id} className="relative bg-[#141426]/40 border border-[rgba(139,69,212,0.12)] rounded-xl p-5 space-y-4 hover:border-[rgba(139,69,212,0.22)] transition-all">
+                    
+                    {/* Circle position label */}
+                    <div className="absolute -left-[39px] top-5 w-7 h-7 rounded-full bg-gradient-to-br from-[#6b2fb5] to-[#a855f7] flex items-center justify-center text-white text-xs font-bold shadow-glow-sm">
+                      {idx + 1}
+                    </div>
+
                     <div className="flex justify-between items-center">
-                      <span className="text-xs font-bold text-white uppercase">Etapa {idx + 1}</span>
+                      <span className="badge badge-purple text-[9px] font-bold uppercase tracking-wider">
+                        {step.type === "message" ? "Mensagem Inicial" : `Gatilho de Resposta`}
+                      </span>
                       {idx > 0 && (
                         <button
                           onClick={() => handleRemoveStep(step.id)}
-                          className="text-red-500 hover:text-red-400 text-xs"
+                          className="text-red-400 hover:text-red-300 text-xs font-semibold cursor-pointer"
                         >
-                          Remover
+                          Remover Etapa
                         </button>
                       )}
                     </div>
@@ -618,7 +643,7 @@ export default function DisparosPage() {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="flex flex-col space-y-1">
                           <label className="text-[10px] font-bold text-gray-500 uppercase">
-                            Tipo de Validação do Gatilho
+                            Validação do Gatilho
                           </label>
                           <select
                             value={step.triggerType || "contains"}
@@ -630,7 +655,7 @@ export default function DisparosPage() {
                                 setSteps(updated);
                               }
                             }}
-                            className="premium-input text-xs"
+                            className="input text-xs cursor-pointer"
                           >
                             <option value="contains">Se Contém a palavra</option>
                             <option value="exact">Palavra Exata</option>
@@ -654,21 +679,21 @@ export default function DisparosPage() {
                                 setSteps(updated);
                               }
                             }}
-                            className="premium-input text-xs"
+                            className="input text-xs"
                           />
                         </div>
 
                         {step.triggerType === "context" && (
-                          <div className="md:col-span-2 text-[10px] text-yellow-500 bg-yellow-950/20 border border-yellow-500/20 p-2 rounded-lg leading-relaxed flex items-center space-x-2">
-                            <span className="font-semibold">⚠️ Nota:</span>
-                            <span>A Inteligência Artificial analisará a resposta livre do cliente para inferir essa intenção. *Aviso: a IA pode cometer erros de interpretação.*</span>
+                          <div className="md:col-span-2 text-[10px] text-[#fbbf24] bg-yellow-950/10 border border-yellow-500/20 p-3 rounded-lg leading-relaxed flex items-center space-x-2">
+                            <AlertTriangle className="w-4 h-4 flex-shrink-0 text-[#fbbf24]" />
+                            <span>A IA analisará a intenção da resposta. <strong>Nota: a IA pode cometer erros de interpretação.</strong></span>
                           </div>
                         )}
                       </div>
                     )}
 
-                    <div className="flex flex-col space-y-1">
-                      <label className="text-[10px] font-bold text-gray-500 uppercase">Mensagem a Enviar</label>
+                    <div className="flex flex-col space-y-1.5">
+                      <label className="text-[10px] font-bold text-gray-500 uppercase">Texto da Mensagem</label>
                       <textarea
                         rows={3}
                         value={step.messageText}
@@ -680,7 +705,7 @@ export default function DisparosPage() {
                             setSteps(updated);
                           }
                         }}
-                        className="premium-input text-xs"
+                        className="input text-xs"
                       ></textarea>
                     </div>
 
@@ -699,7 +724,7 @@ export default function DisparosPage() {
                               setSteps(updated);
                             }
                           }}
-                          className="premium-input text-xs"
+                          className="input text-xs cursor-pointer"
                         >
                           <option value="new">Novo</option>
                           <option value="contacted">Contatado</option>
@@ -711,33 +736,35 @@ export default function DisparosPage() {
                 ))}
               </div>
 
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pt-4 border-t border-[#222]">
-                <div className="text-[10px] text-gray-400 max-w-md leading-normal flex items-center space-x-1.5 bg-[#161616] p-2 rounded-lg border border-[#222]">
-                  <AlertTriangle className="w-3.5 h-3.5 text-yellow-500 flex-shrink-0" />
-                  <span>Atenção: A interpretação contextual e classificação de leads por Inteligência Artificial é automatizada. A IA pode cometer erros de interpretação.</span>
+              {/* Bottom trigger settings and warn */}
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pt-5 border-t border-[rgba(139,69,212,0.12)]">
+                <div className="text-[10px] text-gray-500 max-w-lg leading-relaxed flex items-center space-x-2 bg-[#0a0a0f] p-3 rounded-lg border border-[rgba(139,69,212,0.08)]">
+                  <Info className="w-4 h-4 text-[#a855f7] flex-shrink-0" />
+                  <span>Atenção: A interpretação contextual e classificação por Inteligência Artificial é automatizada. Lembre-se que a IA pode cometer erros.</span>
                 </div>
+                
                 <button
                   onClick={handleStartBroadcast}
-                  className="premium-button-primary flex items-center space-x-2 text-xs uppercase"
+                  className="btn-primary flex items-center space-x-2 text-xs uppercase py-3 px-6 shadow-glow-sm cursor-pointer font-bold tracking-wider"
                 >
                   <Send className="w-4 h-4" />
-                  <span>Iniciar Disparo</span>
+                  <span>Iniciar Disparos</span>
                 </button>
               </div>
             </div>
 
             {/* Histórico de Disparos */}
-            <div className="premium-card p-6 space-y-6">
-              <h3 className="text-sm font-bold uppercase text-white tracking-wider">Histórico de Disparos</h3>
+            <div className="card p-6 space-y-5">
+              <h3 className="text-xs font-bold uppercase text-white tracking-wider">Histórico de Disparos Recentes</h3>
               {jobs.length === 0 ? (
-                <p className="text-xs text-gray-500 text-center py-6">Nenhum disparo realizado anteriormente.</p>
+                <p className="text-xs text-gray-500 text-center py-8">Nenhum disparo registrado anteriormente.</p>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="premium-table">
-                    <thead>
+                    <thead className="bg-[#141426]">
                       <tr>
                         <th>Fluxo</th>
-                        <th>Data</th>
+                        <th>Data / Hora</th>
                         <th>Status</th>
                         <th>Filtros</th>
                         <th>Envios</th>
@@ -745,30 +772,30 @@ export default function DisparosPage() {
                     </thead>
                     <tbody>
                       {jobs.map((job) => (
-                        <tr key={job.id}>
+                        <tr key={job.id} className="hover:bg-[rgba(139,69,212,0.04)] transition-colors">
                           <td className="font-semibold text-white">{job.dispatch_flows?.name || "Fluxo Excluído"}</td>
                           <td className="text-xs text-gray-400">
-                            {new Date(job.created_at).toLocaleDateString("pt-BR")} {new Date(job.created_at).toLocaleTimeString("pt-BR", {hour: '2-digit', minute:'2-digit'})}
+                            {new Date(job.created_at).toLocaleDateString("pt-BR")} às {new Date(job.created_at).toLocaleTimeString("pt-BR", {hour: '2-digit', minute:'2-digit'})}
                           </td>
                           <td>
                             <span
-                              className={`text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded ${
+                              className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
                                 job.status === "completed"
-                                  ? "bg-green-950/20 text-green-500 border border-green-500/20"
+                                  ? "bg-[#051505] text-[#4ade80] border-[rgba(34,197,94,0.3)]"
                                   : job.status === "running"
-                                    ? "bg-blue-950/20 text-blue-500 border border-blue-500/20 animate-pulse"
+                                    ? "bg-[#0a1520] text-[#60a5fa] border-[rgba(59,130,246,0.3)] animate-pulse"
                                     : job.status === "pending"
-                                      ? "bg-yellow-950/20 text-yellow-500 border border-yellow-500/20"
-                                      : "bg-red-950/20 text-red-500 border border-red-500/20"
+                                      ? "bg-[#150f00] text-[#fbbf24] border-[rgba(245,158,11,0.3)]"
+                                      : "bg-[#150505] text-[#f87171] border-[rgba(239,68,68,0.3)]"
                               }`}
                             >
-                              {job.status}
+                              {job.status === "completed" ? "Concluído" : job.status === "running" ? "Executando" : job.status === "pending" ? "Pendente" : "Falhou"}
                             </span>
                           </td>
-                          <td className="text-xs text-gray-500">
-                            Status: {job.filter_status || "Todos"} | Cat: {job.filter_category || "Todas"}
+                          <td className="text-xs text-gray-500 font-medium">
+                            Status: {job.filter_status || "Todos"} | Categoria: {job.filter_category || "Todas"}
                           </td>
-                          <td className="text-xs text-white">
+                          <td className="text-xs text-white font-mono font-bold">
                             {job.sent_count} / {job.total_leads}
                           </td>
                         </tr>
@@ -783,15 +810,21 @@ export default function DisparosPage() {
 
         {/* Official API section (Disabled/Ultra Plan demo) */}
         {apiType === "official" && (
-          <div className="premium-card p-12 text-center flex flex-col items-center justify-center space-y-4">
-            <span className="text-4xl">💼</span>
+          <div className="card p-16 text-center flex flex-col items-center justify-center space-y-4">
+            <div className="w-12 h-12 rounded-full bg-[#141426] flex items-center justify-center text-gray-500">
+              <Send className="w-6 h-6 text-[#a855f7]" />
+            </div>
             <h3 className="text-sm font-bold text-white uppercase tracking-wider">Disparos via API Oficial</h3>
             <p className="text-xs text-gray-500 max-w-sm leading-relaxed">
-              Os disparos de API Oficial exigem integração com o Meta Cloud API e conta Chatwoot (Plano Ultra).
+              Disparos de API Oficial exigem integração com o Meta Cloud API e conta Chatwoot ativa.
             </p>
-            {profile?.plan !== "ultra" && (
-              <div className="text-[10px] text-yellow-500 bg-yellow-950/20 border border-yellow-500/20 px-4 py-2 rounded-lg font-bold uppercase tracking-wider mt-4">
+            {profile?.plan !== "ultra" ? (
+              <div className="text-[9px] text-[#fbbf24] bg-yellow-950/20 border border-yellow-500/20 px-4 py-2 rounded-lg font-bold uppercase tracking-wider mt-4">
                 Disponível apenas no plano Ultra
+              </div>
+            ) : (
+              <div className="text-[9px] text-[#4ade80] bg-green-950/20 border border-green-500/20 px-4 py-2 rounded-lg font-bold uppercase tracking-wider mt-4">
+                Entre em contato com o suporte para conectar seu canal Meta
               </div>
             )}
           </div>

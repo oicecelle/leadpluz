@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@repo/supabase";
 import DashboardLayout from "../../../components/DashboardLayout";
-import { Plus, X, Video, Calendar, Clock, Trash2, Edit3, CheckCircle } from "lucide-react";
+import { Plus, X, Video, Calendar, Clock, Trash2, ArrowRight } from "lucide-react";
 import { formatDate } from "@repo/utils";
 
 export default function AgendamentosPage() {
@@ -39,7 +39,6 @@ export default function AgendamentosPage() {
         setProfile(prof);
 
         if (prof) {
-          // Fetch calls
           const { data: agends } = await (supabase.from("schedules") as any)
             .select("*, user_leads(name, phone)")
             .eq("user_id", prof.id)
@@ -47,7 +46,6 @@ export default function AgendamentosPage() {
 
           setCalls(agends || []);
 
-          // Fetch user leads for autocomplete selection
           const { data: userLeads } = await (supabase.from("user_leads") as any)
             .select("id, name")
             .eq("user_id", prof.id);
@@ -87,7 +85,6 @@ export default function AgendamentosPage() {
       setCalls([...calls, data]);
       setShowAddModal(false);
       
-      // Reset form
       setSelectedLeadId("");
       setTitle("");
       setScheduledAt("");
@@ -132,7 +129,6 @@ export default function AgendamentosPage() {
     }
   };
 
-  // Filtered calls list based on tab
   const filteredCalls = calls.filter((c) => {
     if (tab === "upcoming") return c.status === "upcoming";
     if (tab === "completed") return c.status === "completed";
@@ -141,26 +137,27 @@ export default function AgendamentosPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
-        <div className="w-8 h-8 border border-t-white border-r-[#222] border-b-[#222] border-l-[#222] rounded-full animate-spin"></div>
+      <div className="min-h-screen bg-[#050508] flex items-center justify-center">
+        <div className="w-8 h-8 border border-t-purple-500 border-r-purple-900/30 border-b-purple-900/30 border-l-purple-900/30 rounded-full animate-spin"></div>
       </div>
     );
   }
 
   return (
     <DashboardLayout>
-      <div className="space-y-6 max-w-5xl">
+      <div className="space-y-6 max-w-4xl select-none animate-in fade-in duration-200">
+        
         {/* Header Toolbar */}
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           {/* Tabs */}
-          <div className="flex space-x-2 border-b border-[#222] pb-px">
+          <div className="flex space-x-2 border-b border-[rgba(139,69,212,0.12)] w-full sm:w-auto pb-px">
             {(["upcoming", "completed", "cancelled"] as const).map((t) => (
               <button
                 key={t}
                 onClick={() => setTab(t)}
-                className={`px-4 py-2 text-xs font-bold uppercase tracking-wider transition-all duration-150 border-b-2 ${
+                className={`px-4 py-2 text-xs font-bold uppercase tracking-wider transition-all duration-150 border-b-2 cursor-pointer ${
                   tab === t
-                    ? "border-white text-white font-semibold"
+                    ? "border-[#a855f7] text-white font-bold"
                     : "border-transparent text-gray-500 hover:text-white"
                 }`}
               >
@@ -171,127 +168,148 @@ export default function AgendamentosPage() {
 
           <button
             onClick={() => setShowAddModal(true)}
-            className="premium-button-primary flex items-center space-x-2 text-xs uppercase"
+            className="btn-primary flex items-center space-x-2 text-xs uppercase py-2.5 px-4 shadow-glow-sm cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>Agendar Call</span>
           </button>
         </div>
 
-        {/* Custom Month Calendar Grid Preview (Miniature representation) */}
-        <div className="premium-card p-6 grid grid-cols-7 gap-2 text-center text-xs">
-          <div className="font-bold text-gray-500 uppercase text-[10px]">Dom</div>
-          <div className="font-bold text-gray-500 uppercase text-[10px]">Seg</div>
-          <div className="font-bold text-gray-500 uppercase text-[10px]">Ter</div>
-          <div className="font-bold text-gray-500 uppercase text-[10px]">Qua</div>
-          <div className="font-bold text-gray-500 uppercase text-[10px]">Qui</div>
-          <div className="font-bold text-gray-500 uppercase text-[10px]">Sex</div>
-          <div className="font-bold text-gray-500 uppercase text-[10px]">Sáb</div>
-          
-          {/* Render calendar grid blocks */}
-          {Array.from({ length: 31 }).map((_, idx) => {
-            const dayNum = idx + 1;
-            // Check if there are calls on this day (simplified mock check)
-            const hasCallThisDay = dayNum % 8 === 0;
-            return (
-              <div
-                key={idx}
-                className={`aspect-square p-2 border border-[#222] rounded-lg flex flex-col justify-between items-center ${
-                  hasCallThisDay ? "bg-white/5 border-white/20" : "bg-[#111]"
-                }`}
-              >
-                <span className="font-semibold text-gray-400">{dayNum}</span>
-                {hasCallThisDay && (
-                  <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                )}
-              </div>
-            );
-          })}
+        {/* Miniature Calendar Grid Preview */}
+        <div className="card p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Cronograma do Mês</span>
+            <span className="text-[9px] text-[#a855f7] font-extrabold uppercase tracking-wider">Visualização rápida</span>
+          </div>
+          <div className="grid grid-cols-7 gap-2 text-center text-xs">
+            {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map((d) => (
+              <div key={d} className="font-bold text-gray-500 uppercase text-[9px] tracking-wider">{d}</div>
+            ))}
+            
+            {Array.from({ length: 28 }).map((_, idx) => {
+              const dayNum = idx + 1;
+              const hasCallThisDay = dayNum % 7 === 3; // Mock visual call indicator
+              return (
+                <div
+                  key={idx}
+                  className={`aspect-square p-2 border rounded-lg flex flex-col justify-between items-center transition-colors ${
+                    hasCallThisDay 
+                      ? "bg-[rgba(139,69,212,0.06)] border-[rgba(139,69,212,0.22)]" 
+                      : "bg-[#141426]/30 border-[rgba(139,69,212,0.06)] hover:border-[rgba(139,69,212,0.15)]"
+                  }`}
+                >
+                  <span className="font-semibold text-gray-400 text-[10px]">{dayNum}</span>
+                  {hasCallThisDay && (
+                    <div className="w-1.5 h-1.5 rounded-full bg-[#a855f7] shadow-glow-sm" />
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
 
-        {/* Calls List */}
+        {/* Calls Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {filteredCalls.length > 0 ? (
-            filteredCalls.map((c) => (
-              <div key={c.id} className="premium-card p-5 space-y-4 relative">
-                <div className="flex justify-between items-start">
-                  <div className="space-y-1">
-                    <h4 className="text-sm font-bold text-white uppercase tracking-wide">
-                      {c.title}
-                    </h4>
-                    <p className="text-xs text-gray-400">Lead: {c.user_leads?.name || "Sem Nome"}</p>
+            filteredCalls.map((c) => {
+              const dateObj = new Date(c.scheduled_at);
+              const day = String(dateObj.getDate()).padStart(2, '0');
+              const month = dateObj.toLocaleDateString("pt-BR", { month: 'short' }).substring(0, 3).toUpperCase();
+              
+              return (
+                <div key={c.id} className="card p-5 hover:border-[rgba(139,69,212,0.25)] hover:shadow-glow-sm transition-all duration-150 relative flex">
+                  
+                  {/* Left Date Column (48px) */}
+                  <div className="w-[48px] flex flex-col items-center justify-center pr-4">
+                    <span className="text-xl font-extrabold text-white leading-none">{day}</span>
+                    <span className="text-[9px] text-[#a855f7] font-bold tracking-wider mt-1">{month}</span>
                   </div>
 
-                  <span
-                    className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${
-                      c.status === "upcoming"
-                        ? "bg-yellow-950/20 text-yellow-500 border border-yellow-500/20"
-                        : c.status === "completed"
-                          ? "bg-green-950/20 text-green-500 border border-green-500/20"
-                          : "bg-red-950/20 text-red-500 border border-red-500/20"
-                    }`}
-                  >
-                    {c.status}
-                  </span>
+                  {/* Vertical separator */}
+                  <div className="w-[1px] bg-gradient-to-b from-transparent via-[rgba(139,69,212,0.15)] to-transparent mx-1.5"></div>
+
+                  {/* Call details */}
+                  <div className="flex-1 pl-4 space-y-3.5">
+                    <div className="flex justify-between items-start">
+                      <div className="space-y-0.5">
+                        <h4 className="text-xs font-bold text-white uppercase tracking-wide">
+                          {c.title}
+                        </h4>
+                        <p className="text-[11px] text-gray-400 font-medium">Lead: <span className="text-purple-300 font-semibold">{c.user_leads?.name || "Sem Nome"}</span></p>
+                      </div>
+
+                      <span
+                        className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
+                          c.status === "upcoming"
+                            ? "bg-[#150f00] text-[#fbbf24] border-[rgba(245,158,11,0.3)]"
+                            : c.status === "completed"
+                              ? "bg-[#051505] text-[#4ade80] border-[rgba(34,197,94,0.3)]"
+                              : "bg-[#150505] text-[#f87171] border-[rgba(239,68,68,0.3)]"
+                        }`}
+                      >
+                        {c.status === "upcoming" ? "Pendente" : c.status === "completed" ? "Concluída" : "Cancelada"}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2.5 text-[11px] text-gray-400 font-medium pt-2 border-t border-[rgba(139,69,212,0.06)]">
+                      <div className="flex items-center space-x-1.5">
+                        <Calendar className="w-3.5 h-3.5 text-gray-500" />
+                        <span>{formatDate(c.scheduled_at)}</span>
+                      </div>
+                      <div className="flex items-center space-x-1.5">
+                        <Clock className="w-3.5 h-3.5 text-gray-500" />
+                        <span>{c.duration_minutes} min</span>
+                      </div>
+                    </div>
+
+                    {c.meeting_url && (
+                      <div className="pt-1">
+                        <a
+                          href={c.meeting_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="btn-secondary flex items-center space-x-2 text-[10px] py-1.5 px-3 rounded-lg border-[rgba(139,69,212,0.22)]"
+                        >
+                          <Video className="w-3.5 h-3.5 text-[#a855f7]" />
+                          <span>Entrar na Reunião</span>
+                        </a>
+                      </div>
+                    )}
+
+                    {/* Status actions */}
+                    {c.status === "upcoming" && (
+                      <div className="flex space-x-2 pt-1.5 justify-end">
+                        <button
+                          onClick={() => handleUpdateStatus(c.id, "completed")}
+                          className="px-2.5 py-1.5 bg-[#051505] border border-green-500/25 text-[#4ade80] text-[9px] font-bold uppercase tracking-wider rounded-lg hover:bg-[#051505]/75 cursor-pointer"
+                        >
+                          Concluída
+                        </button>
+                        <button
+                          onClick={() => handleUpdateStatus(c.id, "cancelled")}
+                          className="px-2.5 py-1.5 bg-[#150505] border border-red-500/25 text-[#f87171] text-[9px] font-bold uppercase tracking-wider rounded-lg hover:bg-[#150505]/75 cursor-pointer"
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    )}
+
+                    {c.status !== "upcoming" && (
+                      <div className="absolute top-2 right-2">
+                        <button
+                          onClick={() => handleDeleteCall(c.id)}
+                          className="text-gray-600 hover:text-red-400 transition-colors p-1 cursor-pointer"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
-
-                <div className="grid grid-cols-2 gap-3 text-xs text-gray-400 pt-2 border-t border-[#222]">
-                  <div className="flex items-center space-x-2">
-                    <Calendar className="w-4 h-4 text-gray-600" />
-                    <span>{formatDate(c.scheduled_at)}</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Clock className="w-4 h-4 text-gray-600" />
-                    <span>Duração: {c.duration_minutes} min</span>
-                  </div>
-                </div>
-
-                {c.meeting_url && (
-                  <div className="pt-2">
-                    <a
-                      href={c.meeting_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center space-x-2 text-xs text-white hover:underline bg-[#1a1a1a] px-3 py-1.5 rounded-lg border border-[#333]"
-                    >
-                      <Video className="w-3.5 h-3.5" />
-                      <span>Entrar na Reunião</span>
-                    </a>
-                  </div>
-                )}
-
-                {/* Status action buttons */}
-                {c.status === "upcoming" && (
-                  <div className="flex space-x-2 pt-2 justify-end">
-                    <button
-                      onClick={() => handleUpdateStatus(c.id, "completed")}
-                      className="px-3 py-1.5 bg-green-950/30 border border-green-500/20 text-green-500 text-[10px] font-bold uppercase rounded-lg hover:bg-green-950/50"
-                    >
-                      Realizada
-                    </button>
-                    <button
-                      onClick={() => handleUpdateStatus(c.id, "cancelled")}
-                      className="px-3 py-1.5 bg-red-950/30 border border-red-500/20 text-red-500 text-[10px] font-bold uppercase rounded-lg hover:bg-red-950/50"
-                    >
-                      Cancelar
-                    </button>
-                  </div>
-                )}
-
-                {c.status !== "upcoming" && (
-                  <div className="absolute top-2 right-2">
-                    <button
-                      onClick={() => handleDeleteCall(c.id)}
-                      className="text-gray-600 hover:text-red-500 transition-colors"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                )}
-              </div>
-            ))
+              );
+            })
           ) : (
-            <div className="col-span-2 premium-card p-12 text-center text-gray-500 text-sm">
+            <div className="col-span-2 card p-16 text-center text-gray-500 text-xs font-semibold">
               Nenhuma call agendada para esta listagem.
             </div>
           )}
@@ -300,13 +318,13 @@ export default function AgendamentosPage() {
 
       {/* Add Call Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-md bg-[#111] border border-[#222] rounded-xl overflow-hidden shadow-2xl">
-            <header className="px-6 py-4 border-b border-[#222] flex items-center justify-between">
+        <div className="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-[#0f0f1a] border border-[rgba(139,69,212,0.22)] rounded-xl overflow-hidden shadow-glow-sm animate-in scale-in duration-200">
+            <header className="px-6 py-4 border-b border-[rgba(139,69,212,0.12)] flex items-center justify-between">
               <h3 className="text-sm font-bold uppercase tracking-wider text-white">Agendar Reunião (Call)</h3>
               <button
                 onClick={() => setShowAddModal(false)}
-                className="text-gray-500 hover:text-white transition-colors"
+                className="text-gray-500 hover:text-white transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -319,7 +337,7 @@ export default function AgendamentosPage() {
                   required
                   value={selectedLeadId}
                   onChange={(e) => setSelectedLeadId(e.target.value)}
-                  className="premium-input text-xs"
+                  className="input text-xs cursor-pointer"
                 >
                   <option value="">Selecione o lead...</option>
                   {leads.map((l) => (
@@ -338,7 +356,7 @@ export default function AgendamentosPage() {
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="Ex: Call de Alinhamento de Proposta"
-                  className="premium-input"
+                  className="input"
                 />
               </div>
 
@@ -350,7 +368,7 @@ export default function AgendamentosPage() {
                     required
                     value={scheduledAt}
                     onChange={(e) => setScheduledAt(e.target.value)}
-                    className="premium-input text-xs"
+                    className="input text-xs cursor-pointer"
                   />
                 </div>
 
@@ -359,7 +377,7 @@ export default function AgendamentosPage() {
                   <select
                     value={duration}
                     onChange={(e) => setDuration(e.target.value)}
-                    className="premium-input text-xs"
+                    className="input text-xs cursor-pointer"
                   >
                     <option value="30">30 min</option>
                     <option value="60">1 hora</option>
@@ -375,7 +393,7 @@ export default function AgendamentosPage() {
                   <select
                     value={platform}
                     onChange={(e: any) => setPlatform(e.target.value)}
-                    className="premium-input text-xs"
+                    className="input text-xs cursor-pointer"
                   >
                     <option value="google_meet">Google Meet</option>
                     <option value="zoom">Zoom</option>
@@ -391,7 +409,7 @@ export default function AgendamentosPage() {
                     value={meetingUrl}
                     onChange={(e) => setMeetingUrl(e.target.value)}
                     placeholder="https://meet.google.com/..."
-                    className="premium-input text-xs"
+                    className="input text-xs"
                   />
                 </div>
               </div>
@@ -401,25 +419,25 @@ export default function AgendamentosPage() {
                 <textarea
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  rows={2}
-                  className="premium-input text-xs"
+                  rows={3}
+                  className="input text-xs"
                 ></textarea>
               </div>
 
-              <div className="flex justify-end space-x-3 pt-4 border-t border-[#222]">
+              <div className="flex justify-end space-x-3 pt-4 border-t border-[rgba(139,69,212,0.12)]">
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="premium-button-secondary text-xs uppercase"
+                  className="btn-secondary text-xs uppercase"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={modalLoading}
-                  className="premium-button-primary text-xs uppercase"
+                  className="btn-primary text-xs uppercase py-2.5 px-4 cursor-pointer"
                 >
-                  {modalLoading ? "Agendando..." : "Confirmar Agendamento"}
+                  Confirmar Agendamento
                 </button>
               </div>
             </form>

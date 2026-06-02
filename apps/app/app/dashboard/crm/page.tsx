@@ -4,18 +4,20 @@ import { useState, useEffect } from "react";
 import { supabase } from "@repo/supabase";
 import DashboardLayout from "../../../components/DashboardLayout";
 import {
-  HelpCircle,
   Database,
-  Filter,
   Plus,
   Trash2,
   Edit3,
-  Calendar,
   FileSpreadsheet,
   FileUp,
+  FileDown,
   X,
   MessageSquare,
-  Search
+  Search,
+  Users,
+  Send,
+  Check,
+  TrendingUp
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { formatPhone } from "@repo/utils";
@@ -57,7 +59,6 @@ export default function CRMPage() {
         setProfile(prof);
 
         if (prof) {
-          // Fetch leads for user
           const { data: userLeads, error } = await (supabase.from("user_leads") as any)
             .select("*")
             .eq("user_id", prof.id)
@@ -66,7 +67,6 @@ export default function CRMPage() {
           if (!error && userLeads) {
             setLeads(userLeads);
             
-            // Extract unique categories and sources for filters
             const cats = Array.from(new Set(userLeads.map((l: any) => l.category).filter(Boolean)));
             const srcs = Array.from(new Set(userLeads.map((l: any) => l.source_type).filter(Boolean)));
             setCategories(cats as string[]);
@@ -131,7 +131,6 @@ export default function CRMPage() {
             return;
           }
 
-          // Check cota
           const balance = profile.leads_limit - profile.leads_used_this_cycle;
           if (balance <= 0) {
             alert("Seu saldo de leads está esgotado! Faça upgrade para continuar importando.");
@@ -146,7 +145,6 @@ export default function CRMPage() {
             limitReached = true;
           }
 
-          // Map Excel columns to database fields
           const leadsToInsert = recordsToImport.map(row => {
             const getVal = (possibleKeys: string[]) => {
               const key = Object.keys(row).find(k => 
@@ -177,7 +175,7 @@ export default function CRMPage() {
             } else {
               status = status.toLowerCase();
             }
-            const notas = getVal(["notas", "notes", "observacao", "observacoes"]);
+            const notes = getVal(["notas", "notes", "observacao", "observacoes"]);
 
             return {
               user_id: profile.id,
@@ -188,19 +186,17 @@ export default function CRMPage() {
               city: cidade,
               state: estado,
               status: status,
-              notes: notas,
+              notes: notes,
               source_type: "import" as const
             };
           });
 
-          // Insert into user_leads
           const { data: inserted, error: insertErr } = await (supabase.from("user_leads") as any)
             .insert(leadsToInsert)
             .select();
 
           if (insertErr) throw insertErr;
 
-          // Update profiles leads used
           const newUsed = profile.leads_used_this_cycle + leadsToInsert.length;
           const { error: profileErr } = await (supabase.from("profiles") as any)
             .update({ leads_used_this_cycle: newUsed })
@@ -208,7 +204,6 @@ export default function CRMPage() {
 
           if (profileErr) throw profileErr;
 
-          // Update local state
           setLeads(prev => [...(inserted || []), ...prev]);
           setProfile({ ...profile, leads_used_this_cycle: newUsed });
 
@@ -283,7 +278,6 @@ export default function CRMPage() {
 
     try {
       if (editingLead?.id) {
-        // Update
         const { error } = await (supabase.from("user_leads") as any)
           .update(leadData)
           .eq("id", editingLead.id);
@@ -292,7 +286,6 @@ export default function CRMPage() {
         setLeads(leads.map((l) => (l.id === editingLead.id ? { ...l, ...leadData } : l)));
         alert("Lead atualizado com sucesso.");
       } else {
-        // Create
         const { data, error } = await (supabase.from("user_leads") as any)
           .insert([leadData])
           .select()
@@ -331,14 +324,12 @@ export default function CRMPage() {
     XLSX.writeFile(workbook, "crm_leads.xlsx");
   };
 
-  // Metrics summary
   const totalLeads = leads.length;
   const contactedCount = leads.filter((l) => l.status === "contacted").length;
   const proposalCount = leads.filter((l) => l.status === "proposal_sent").length;
   const convertedCount = leads.filter((l) => l.status === "converted").length;
   const noInterestCount = leads.filter((l) => l.status === "no_interest").length;
 
-  // Filtered results
   const filteredLeads = leads.filter((l) => {
     const matchesSearch =
       l.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -354,45 +345,52 @@ export default function CRMPage() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
+      <div className="space-y-6 select-none">
+        
         {/* Metrics Grid */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           {[
-            { label: "Total leads", value: totalLeads, bg: "bg-[#111]" },
-            { label: "Contatados", value: contactedCount, bg: "bg-[#111] border-l-2 border-yellow-500" },
-            { label: "Proposta Enviada", value: proposalCount, bg: "bg-[#111] border-l-2 border-blue-500" },
-            { label: "Convertidos", value: convertedCount, bg: "bg-[#111] border-l-2 border-green-500" },
-            { label: "Sem interesse", value: noInterestCount, bg: "bg-[#111] border-l-2 border-red-500" },
-          ].map((m) => (
-            <div key={m.label} className={`premium-card p-4 flex flex-col justify-center ${m.bg}`}>
-              <span className="text-2xl font-bold text-white tracking-wider">{m.value}</span>
-              <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mt-1">
-                {m.label}
-              </span>
-            </div>
-          ))}
+            { label: "Total leads", value: totalLeads, border: "border-purple-500/20 hover:border-purple-500/40", icon: Users, color: "text-purple-400" },
+            { label: "Contatados", value: contactedCount, border: "border-blue-500/20 hover:border-blue-500/40", icon: MessageSquare, color: "text-[#60a5fa]" },
+            { label: "Proposta Enviada", value: proposalCount, border: "border-yellow-500/20 hover:border-yellow-500/40", icon: Send, color: "text-[#fbbf24]" },
+            { label: "Convertidos", value: convertedCount, border: "border-green-500/20 hover:border-green-500/40", icon: Check, color: "text-[#4ade80]" },
+            { label: "Sem interesse", value: noInterestCount, border: "border-red-500/20 hover:border-red-500/40", icon: X, color: "text-[#f87171]" },
+          ].map((m) => {
+            const Icon = m.icon;
+            return (
+              <div key={m.label} className={`card p-5 flex flex-col justify-center border-l-2 hover:-translate-y-0.5 transition-all duration-150 ${m.border}`}>
+                <div className="flex justify-between items-center">
+                  <span className="text-2xl font-extrabold text-white tracking-tight">{m.value}</span>
+                  <Icon className={`w-4 h-4 ${m.color}`} />
+                </div>
+                <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mt-2.5">
+                  {m.label}
+                </span>
+              </div>
+            );
+          })}
         </div>
 
         {/* Toolbar & Filters */}
-        <div className="premium-card p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex flex-1 items-center space-x-2">
-            <div className="relative flex-1 max-w-sm">
+        <div className="card p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="flex flex-1 items-center flex-wrap gap-2.5">
+            <div className="relative flex-1 min-w-[200px] max-w-sm">
               <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-500" />
               <input
                 type="text"
                 placeholder="Buscar por nome, e-mail ou telefone..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="premium-input pl-9 w-full"
+                className="input pl-9 w-full"
               />
             </div>
 
-            {/* Filters toggle */}
-            <div className="flex space-x-2">
+            {/* Filters Selects */}
+            <div className="flex space-x-2 flex-wrap gap-y-2">
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="premium-input py-1 text-xs"
+                className="input py-1 text-xs w-[130px] font-medium cursor-pointer"
               >
                 <option value="all">Todos os Status</option>
                 <option value="new">Novo</option>
@@ -406,7 +404,7 @@ export default function CRMPage() {
                 <select
                   value={categoryFilter}
                   onChange={(e) => setCategoryFilter(e.target.value)}
-                  className="premium-input py-1 text-xs"
+                  className="input py-1 text-xs w-[140px] font-medium cursor-pointer"
                 >
                   <option value="all">Todas Categorias</option>
                   {categories.map((c) => (
@@ -419,39 +417,40 @@ export default function CRMPage() {
             </div>
           </div>
 
-          <div className="flex space-x-2">
+          {/* Action buttons */}
+          <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={() => {
                 setEditingLead(null);
                 setShowEditModal(true);
               }}
-              className="premium-button-primary flex items-center space-x-2 text-xs uppercase"
+              className="btn-primary flex items-center space-x-2 text-xs py-2 uppercase font-bold tracking-wider cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               <span>Novo Lead</span>
             </button>
             <button
               onClick={() => setShowImportModal(true)}
-              className="premium-button-secondary flex items-center space-x-2 text-xs uppercase"
+              className="btn-secondary flex items-center space-x-2 text-xs py-2 uppercase font-bold tracking-wider cursor-pointer"
             >
               <FileUp className="w-4 h-4" />
               <span>Importar Excel</span>
             </button>
             <button
               onClick={handleExport}
-              className="premium-button-secondary flex items-center space-x-2 text-xs uppercase"
+              className="btn-secondary flex items-center space-x-2 text-xs py-2 uppercase font-bold tracking-wider cursor-pointer"
             >
-              <FileSpreadsheet className="w-4 h-4" />
+              <FileDown className="w-4 h-4" />
               <span>Exportar Excel</span>
             </button>
           </div>
         </div>
 
         {/* Leads Table */}
-        <div className="premium-card overflow-hidden">
+        <div className="card overflow-hidden">
           <div className="overflow-x-auto">
             <table className="premium-table">
-              <thead>
+              <thead className="bg-[#141426]">
                 <tr>
                   <th>Nome</th>
                   <th>Contato</th>
@@ -464,56 +463,62 @@ export default function CRMPage() {
               <tbody>
                 {filteredLeads.length > 0 ? (
                   filteredLeads.map((lead) => (
-                    <tr key={lead.id}>
+                    <tr key={lead.id} className="hover:bg-[rgba(139,69,212,0.04)] transition-colors">
                       <td className="font-semibold text-white">{lead.name}</td>
                       <td>
                         <div className="flex flex-col text-xs space-y-0.5">
                           {lead.phone && (
-                            <a href={`tel:${lead.phone}`} className="hover:underline">
+                            <a href={`tel:${lead.phone}`} className="hover:underline hover:text-[#a855f7] font-mono text-white font-medium">
                               {formatPhone(lead.phone)}
                             </a>
                           )}
-                          {lead.email && <span className="text-gray-500">{lead.email}</span>}
+                          {lead.email && <span className="text-gray-500 font-medium">{lead.email}</span>}
                         </div>
                       </td>
                       <td>
                         <select
                           value={lead.status}
                           onChange={(e) => handleInlineStatusChange(lead.id, e.target.value)}
-                          className={`text-xs px-2 py-1 rounded border font-semibold outline-none cursor-pointer ${
+                          className={`text-[10px] uppercase tracking-wider px-2.5 py-1.5 rounded-full border font-bold outline-none cursor-pointer transition-all ${
                             lead.status === "new"
-                              ? "bg-gray-950/40 text-gray-400 border-gray-800"
+                              ? "bg-[#0f0f1a] text-[#c084fc] border-[rgba(139,69,212,0.3)] hover:border-[rgba(139,69,212,0.5)]"
                               : lead.status === "contacted"
-                                ? "bg-yellow-950/20 text-yellow-500 border-yellow-500/20"
+                                ? "bg-[#0a1520] text-[#60a5fa] border-[rgba(59,130,246,0.3)] hover:border-[rgba(59,130,246,0.5)]"
                                 : lead.status === "proposal_sent"
-                                  ? "bg-blue-950/20 text-blue-500 border-blue-500/20"
+                                  ? "bg-[#150f00] text-[#fbbf24] border-[rgba(245,158,11,0.3)] hover:border-[rgba(245,158,11,0.5)]"
                                   : lead.status === "converted"
-                                    ? "bg-green-950/20 text-green-500 border-green-500/20"
-                                    : "bg-red-950/20 text-red-500 border-red-500/20"
+                                    ? "bg-[#051505] text-[#4ade80] border-[rgba(34,197,94,0.3)] hover:border-[rgba(34,197,94,0.5)]"
+                                    : "bg-[#150505] text-[#f87171] border-[rgba(239,68,68,0.3)] hover:border-[rgba(239,68,68,0.5)]"
                           }`}
                         >
                           <option value="new">Novo</option>
                           <option value="contacted">Contatado</option>
-                          <option value="proposal_sent">Proposta Enviada</option>
+                          <option value="proposal_sent">Proposta</option>
                           <option value="converted">Convertido</option>
                           <option value="no_interest">Sem interesse</option>
                         </select>
                       </td>
-                      <td>{lead.category || "—"}</td>
-                      <td>{lead.city || "—"}</td>
-                      <td className="text-right space-x-1">
+                      <td>
+                        {lead.category ? (
+                          <span className="badge badge-purple">{lead.category}</span>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                      <td className="text-gray-400 font-medium">{lead.city || "—"}</td>
+                      <td className="text-right space-x-2">
                         <button
                           onClick={() => {
                             setEditingLead(lead);
                             setShowEditModal(true);
                           }}
-                          className="p-1 hover:text-white text-gray-500 transition-colors inline-block"
+                          className="p-1 hover:text-white text-gray-500 transition-colors inline-block cursor-pointer"
                         >
                           <Edit3 className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => handleDeleteLead(lead.id)}
-                          className="p-1 hover:text-red-500 text-gray-500 transition-colors inline-block"
+                          className="p-1 hover:text-red-500 text-gray-500 transition-colors inline-block cursor-pointer"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -535,15 +540,15 @@ export default function CRMPage() {
 
       {/* Edit/Add Modal */}
       {showEditModal && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-lg bg-[#111] border border-[#222] rounded-xl overflow-hidden shadow-2xl">
-            <header className="px-6 py-4 border-b border-[#222] flex items-center justify-between">
+        <div className="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="w-full max-w-lg bg-[#0f0f1a] border border-[rgba(139,69,212,0.22)] rounded-xl overflow-hidden shadow-glow-sm">
+            <header className="px-6 py-4 border-b border-[rgba(139,69,212,0.12)] flex items-center justify-between">
               <h3 className="text-sm font-bold uppercase tracking-wider text-white">
                 {editingLead ? "Editar Lead" : "Novo Lead"}
               </h3>
               <button
                 onClick={() => setShowEditModal(false)}
-                className="text-gray-500 hover:text-white transition-colors"
+                className="text-gray-500 hover:text-white transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -558,7 +563,7 @@ export default function CRMPage() {
                     name="name"
                     required
                     defaultValue={editingLead?.name || ""}
-                    className="premium-input"
+                    className="input"
                   />
                 </div>
                 <div className="flex flex-col space-y-1">
@@ -568,7 +573,7 @@ export default function CRMPage() {
                     name="phone"
                     defaultValue={editingLead?.phone || ""}
                     placeholder="Ex: 5511999999999"
-                    className="premium-input"
+                    className="input"
                   />
                 </div>
                 <div className="flex flex-col space-y-1">
@@ -578,7 +583,7 @@ export default function CRMPage() {
                     name="email"
                     defaultValue={editingLead?.email || ""}
                     placeholder="contato@email.com"
-                    className="premium-input"
+                    className="input"
                   />
                 </div>
                 <div className="flex flex-col space-y-1">
@@ -588,7 +593,7 @@ export default function CRMPage() {
                     name="category"
                     defaultValue={editingLead?.category || ""}
                     placeholder="Ex: Odontologia"
-                    className="premium-input"
+                    className="input"
                   />
                 </div>
                 <div className="flex flex-col space-y-1">
@@ -597,7 +602,7 @@ export default function CRMPage() {
                     type="text"
                     name="city"
                     defaultValue={editingLead?.city || ""}
-                    className="premium-input"
+                    className="input"
                   />
                 </div>
                 <div className="flex flex-col space-y-1">
@@ -606,12 +611,12 @@ export default function CRMPage() {
                     type="text"
                     name="state"
                     defaultValue={editingLead?.state || ""}
-                    className="premium-input"
+                    className="input"
                   />
                 </div>
                 <div className="flex flex-col space-y-1">
                   <label className="text-[10px] font-bold text-gray-500 uppercase">Status</label>
-                  <select name="status" defaultValue={editingLead?.status || "new"} className="premium-input">
+                  <select name="status" defaultValue={editingLead?.status || "new"} className="input">
                     <option value="new">Novo</option>
                     <option value="contacted">Contatado</option>
                     <option value="proposal_sent">Proposta Enviada</option>
@@ -626,7 +631,7 @@ export default function CRMPage() {
                     name="instagram"
                     placeholder="@perfil"
                     defaultValue={editingLead?.instagram || ""}
-                    className="premium-input"
+                    className="input"
                   />
                 </div>
               </div>
@@ -637,22 +642,22 @@ export default function CRMPage() {
                   name="notes"
                   rows={3}
                   defaultValue={editingLead?.notes || ""}
-                  className="premium-input"
+                  className="input"
                 ></textarea>
               </div>
 
-              <div className="flex justify-end space-x-3 pt-4 border-t border-[#222]">
+              <div className="flex justify-end space-x-3 pt-4 border-t border-[rgba(139,69,212,0.12)]">
                 <button
                   type="button"
                   onClick={() => setShowEditModal(false)}
-                  className="premium-button-secondary text-xs uppercase"
+                  className="btn-secondary text-xs uppercase"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={modalLoading}
-                  className="premium-button-primary text-xs uppercase"
+                  className="btn-primary text-xs uppercase"
                 >
                   {modalLoading ? "Salvando..." : "Salvar Lead"}
                 </button>
@@ -665,8 +670,8 @@ export default function CRMPage() {
       {/* Import Excel Modal */}
       {showImportModal && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-md bg-[#111] border border-[#222] rounded-xl overflow-hidden shadow-2xl">
-            <header className="px-6 py-4 border-b border-[#222] flex items-center justify-between">
+          <div className="w-full max-w-md bg-[#0f0f1a] border border-[rgba(139,69,212,0.22)] rounded-xl overflow-hidden shadow-glow-sm">
+            <header className="px-6 py-4 border-b border-[rgba(139,69,212,0.12)] flex items-center justify-between">
               <h3 className="text-sm font-bold uppercase tracking-wider text-white">Importar Leads de Excel</h3>
               <button
                 onClick={() => {
@@ -674,7 +679,7 @@ export default function CRMPage() {
                   setImportFile(null);
                   setImportResult(null);
                 }}
-                className="text-gray-500 hover:text-white transition-colors"
+                className="text-gray-500 hover:text-white transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -694,14 +699,14 @@ export default function CRMPage() {
                 </button>
               </div>
 
-              <div className="border-2 border-dashed border-[#222] rounded-xl p-6 text-center hover:border-gray-600 transition-colors relative cursor-pointer">
+              <div className="border-2 border-dashed border-[rgba(139,69,212,0.15)] bg-[#141426]/50 rounded-xl p-6 text-center hover:border-[#a855f7]/50 transition-colors relative cursor-pointer group">
                 <input
                   type="file"
                   accept=".xlsx, .xls, .csv"
                   onChange={handleImportExcel}
                   className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
                 />
-                <FileUp className="w-8 h-8 text-gray-500 mx-auto mb-2" />
+                <FileUp className="w-8 h-8 text-gray-500 group-hover:text-purple-400 mx-auto mb-2 transition-colors" />
                 <span className="text-xs font-semibold text-gray-300 block">
                   {importFile ? importFile.name : "Clique para selecionar ou arraste o arquivo"}
                 </span>
@@ -709,7 +714,7 @@ export default function CRMPage() {
               </div>
 
               {importResult && (
-                <div className="p-4 bg-[#161616] border border-[#222] rounded-lg text-xs space-y-1">
+                <div className="p-4 bg-[#050508] border border-[rgba(139,69,212,0.15)] rounded-lg text-xs space-y-1">
                   <div className="text-white font-bold">Resumo da Importação:</div>
                   <div className="text-gray-400">Total na planilha: {importResult.total}</div>
                   <div className="text-green-500 font-semibold">Importados com sucesso: {importResult.imported}</div>
@@ -721,7 +726,7 @@ export default function CRMPage() {
                 </div>
               )}
 
-              <div className="flex justify-end space-x-3 pt-4 border-t border-[#222]">
+              <div className="flex justify-end space-x-3 pt-4 border-t border-[rgba(139,69,212,0.12)]">
                 <button
                   type="button"
                   onClick={() => {
@@ -729,14 +734,14 @@ export default function CRMPage() {
                     setImportFile(null);
                     setImportResult(null);
                   }}
-                  className="premium-button-secondary text-xs uppercase"
+                  className="btn-secondary text-xs uppercase"
                 >
                   Fechar
                 </button>
                 <button
                   onClick={executeImport}
                   disabled={!importFile || importLoading}
-                  className="premium-button-primary text-xs uppercase flex items-center space-x-2"
+                  className="btn-primary text-xs uppercase flex items-center space-x-2 justify-center"
                 >
                   <span>{importLoading ? "Processando..." : "Confirmar Importação"}</span>
                 </button>

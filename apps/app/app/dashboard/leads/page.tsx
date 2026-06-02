@@ -4,12 +4,19 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@repo/supabase";
 import DashboardLayout from "../../../components/DashboardLayout";
-import { Search, HelpCircle, FileDown, Plus, Trash2, Send, Check } from "lucide-react";
+import { Search, HelpCircle, FileDown, Trash2, Check, Info, AlertTriangle, X, Bolt } from "lucide-react";
 import * as XLSX from "xlsx";
 
 export default function LeadsSearchPage() {
   const router = useRouter();
   const [profile, setProfile] = useState<any>(null);
+  
+  // Chip input lists
+  const [keywordList, setKeywordList] = useState<string[]>([]);
+  const [keywordInput, setKeywordInput] = useState("");
+  const [locationList, setLocationList] = useState<string[]>([]);
+  const [locationInput, setLocationInput] = useState("");
+
   const [keywords, setKeywords] = useState("");
   const [locations, setLocations] = useState("");
   const [source, setSource] = useState<"google" | "instagram" | "tiktok">("google");
@@ -43,10 +50,51 @@ export default function LeadsSearchPage() {
     loadProfile();
   }, []);
 
+  const handleKeywordKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" || e.key === ",") {
+      e.preventDefault();
+      const val = keywordInput.trim().replace(/,/g, "");
+      if (val && !keywordList.includes(val)) {
+        setKeywordList([...keywordList, val]);
+      }
+      setKeywordInput("");
+    }
+  };
+
+  const removeKeywordChip = (chip: string) => {
+    setKeywordList(keywordList.filter((k) => k !== chip));
+  };
+
+  const handleLocationKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" || e.key === ",") {
+      e.preventDefault();
+      const val = locationInput.trim().replace(/,/g, "");
+      if (val && !locationList.includes(val)) {
+        setLocationList([...locationList, val]);
+      }
+      setLocationInput("");
+    }
+  };
+
+  const removeLocationChip = (chip: string) => {
+    setLocationList(locationList.filter((l) => l !== chip));
+  };
+
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!profile) return;
-    if (!keywords.trim()) {
+
+    let finalKeywords = [...keywordList];
+    if (keywordInput.trim()) {
+      finalKeywords.push(keywordInput.trim());
+    }
+
+    let finalLocations = [...locationList];
+    if (locationInput.trim()) {
+      finalLocations.push(locationInput.trim());
+    }
+
+    if (finalKeywords.length === 0) {
       alert("Por favor, digite pelo menos uma palavra-chave.");
       return;
     }
@@ -54,17 +102,9 @@ export default function LeadsSearchPage() {
     setLoading(true);
     setResults([]);
     setSelectedLeads([]);
+    setPage(1);
 
     try {
-      const keywordList = keywords
-        .split(",")
-        .map((k) => k.trim())
-        .filter((k) => k.length > 0);
-      const locationList = locations
-        .split(",")
-        .map((l) => l.trim())
-        .filter((l) => l.length > 0);
-
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
 
@@ -76,8 +116,8 @@ export default function LeadsSearchPage() {
         },
         body: JSON.stringify({
           userId: profile.id,
-          keywords: keywordList,
-          locations: locationList.length > 0 ? locationList : ["Brasil"],
+          keywords: finalKeywords,
+          locations: source === "google" ? (finalLocations.length > 0 ? finalLocations : ["Brasil"]) : ["Brasil"],
           source,
           filters: {
             phoneRequired,
@@ -98,6 +138,7 @@ export default function LeadsSearchPage() {
       }
 
       setResults(data.leads || []);
+
       if (data.limitReached) {
         setUpgradeMsg(
           `Sua busca retornou ${data.totalFound} resultados, mas seu plano tem apenas ${profile.leads_limit - profile.leads_used_this_cycle} leads disponíveis este mês. Foram adicionados os primeiros ${data.addedCount} resultados. Faça upgrade para ver todos.`
@@ -105,7 +146,6 @@ export default function LeadsSearchPage() {
         setShowUpgradeModal(true);
       }
 
-      // Reload profile balance
       const { data: updatedProf } = await (supabase.from("profiles") as any)
         .select("*")
         .eq("id", profile.id)
@@ -173,73 +213,130 @@ export default function LeadsSearchPage() {
     }
   };
 
-  // Pagination logic
   const totalPages = Math.ceil(results.length / perPage);
   const paginatedResults = results.slice((page - 1) * perPage, page * perPage);
 
   return (
     <DashboardLayout>
-      <div className="space-y-8">
-        {/* Form panel */}
-        <div className="premium-card p-6">
-          <form onSubmit={handleSearch} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Keywords */}
+      <div className="space-y-6">
+        
+        {/* Header da Página */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <h1 className="text-lg font-bold text-white flex items-center space-x-2">
+              <Search className="w-5 h-5 text-[#a855f7]" />
+              <span>Busca de Leads</span>
+            </h1>
+            <p className="text-xs text-gray-500">
+              Encontre leads qualificados por palavra-chave e cidade com cache inteligente.
+            </p>
+          </div>
+        </div>
+
+        {/* Card de Busca */}
+        <div className="card p-6 relative">
+          <form onSubmit={handleSearch} className="space-y-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              
+              {/* Keywords Tag Chip Input */}
               <div className="flex flex-col space-y-2">
-                <div className="flex items-center space-x-2">
-                  <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">
-                    Palavras-chave
-                  </label>
-                  <div className="group relative">
-                    <HelpCircle className="w-4 h-4 text-gray-500 cursor-help" />
-                    <div className="hidden group-hover:block absolute z-10 w-64 bg-[#111] border border-[#333] text-gray-300 text-xs p-3 rounded-lg shadow-xl -left-20 top-6">
-                      Use termos específicos para melhores resultados. Ex: &quot;clínica odontológica&quot;, &quot;nail designer&quot;, &quot;academia de musculação&quot;. Evite termos muito genéricos.
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-1.5">
+                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                      Palavras-chave
+                    </label>
+                    <div className="group relative">
+                      <HelpCircle className="w-3.5 h-3.5 text-gray-500 cursor-help" />
+                      <div className="hidden group-hover:block absolute z-10 w-64 bg-[#0f0f1a] border border-[rgba(139,69,212,0.22)] text-gray-400 text-xs p-3 rounded-lg shadow-glow-sm -left-20 top-6">
+                        Digite um termo e pressione vírgula ou Enter. Ex: &quot;clínica estética&quot;, &quot;nail designer&quot;.
+                      </div>
                     </div>
                   </div>
                 </div>
-                <input
-                  type="text"
-                  required
-                  placeholder="odontologia, pilates, estética (separe por vírgula)"
-                  value={keywords}
-                  onChange={(e) => setKeywords(e.target.value)}
-                  className="premium-input"
-                />
+
+                <div className="min-h-[42px] bg-[#141426] border border-[rgba(255,255,255,0.06)] focus-within:border-[#8b45d4] focus-within:ring-3 focus-within:ring-[#6b2fb5]/15 rounded-lg p-1.5 flex flex-wrap gap-1.5 transition-all duration-150">
+                  {keywordList.map((chip) => (
+                    <div key={chip} className="flex items-center space-x-1 px-2.5 py-0.5 rounded bg-[rgba(139,69,212,0.15)] border border-[rgba(139,69,212,0.3)] text-purple-300 text-xs font-medium">
+                      <span>{chip}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeKeywordChip(chip)}
+                        className="text-purple-400 hover:text-purple-200 focus:outline-none ml-1 cursor-pointer"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                  <input
+                    type="text"
+                    placeholder={keywordList.length === 0 ? "Ex: odontologia, pilates, advocacia..." : "Adicionar..."}
+                    value={keywordInput}
+                    onChange={(e) => setKeywordInput(e.target.value)}
+                    onKeyDown={handleKeywordKeyDown}
+                    className="flex-1 bg-transparent border-0 outline-none text-white text-xs px-1 min-w-[80px]"
+                  />
+                </div>
               </div>
 
-              {/* Locations */}
+              {/* Locations Tag Chip Input */}
               <div className="flex flex-col space-y-2">
-                <div className="flex items-center space-x-2">
-                  <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">
-                    Locais
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                    Cidades / Localização
                   </label>
                   {source !== "google" && (
-                    <span className="text-[10px] text-yellow-500 font-medium">
-                      (Não disponível para redes sociais)
+                    <span className="text-[9px] text-[#fbbf24] font-semibold bg-yellow-950/20 px-1.5 py-0.5 rounded">
+                      Não disponível para redes sociais
                     </span>
                   )}
                 </div>
-                <input
-                  type="text"
-                  disabled={source !== "google"}
-                  placeholder={
-                    source === "google"
-                      ? "São Paulo SP, Campinas SP (separe por vírgula)"
-                      : "Busca local desativada para redes sociais"
-                  }
-                  value={locations}
-                  onChange={(e) => setLocations(e.target.value)}
-                  className="premium-input disabled:opacity-40 disabled:cursor-not-allowed"
-                />
+
+                <div className={`min-h-[42px] rounded-lg p-1.5 flex flex-wrap gap-1.5 transition-all duration-150 ${
+                  source !== "google" 
+                    ? "bg-[#141426]/40 opacity-40 cursor-not-allowed border border-[rgba(255,255,255,0.02)]" 
+                    : "bg-[#141426] border border-[rgba(255,255,255,0.06)] focus-within:border-[#8b45d4] focus-within:ring-3 focus-within:ring-[#6b2fb5]/15"
+                }`}>
+                  {source === "google" && locationList.map((chip) => (
+                    <div key={chip} className="flex items-center space-x-1 px-2.5 py-0.5 rounded bg-[rgba(139,69,212,0.15)] border border-[rgba(139,69,212,0.3)] text-purple-300 text-xs font-medium">
+                      <span>{chip}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeLocationChip(chip)}
+                        className="text-purple-400 hover:text-purple-200 focus:outline-none ml-1 cursor-pointer"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                  <input
+                    type="text"
+                    disabled={source !== "google"}
+                    placeholder={
+                      source !== "google"
+                        ? "Local desativado"
+                        : locationList.length === 0
+                          ? "Ex: São Paulo SP, Rio de Janeiro RJ..."
+                          : "Adicionar..."
+                    }
+                    value={locationInput}
+                    onChange={(e) => setLocationInput(e.target.value)}
+                    onKeyDown={handleLocationKeyDown}
+                    className="flex-1 bg-transparent border-0 outline-none text-white text-xs px-1 min-w-[80px] disabled:cursor-not-allowed"
+                  />
+                </div>
               </div>
             </div>
 
+            {/* Divider gradiente roxo */}
+            <div className="h-[1px] w-full bg-gradient-to-r from-transparent via-[rgba(139,69,212,0.22)] to-transparent"></div>
+
             {/* Source and Filters row */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pt-4 border-t border-[#222]">
-              {/* Source Selector */}
-              <div className="flex items-center space-x-4">
-                <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Fonte:</span>
-                <div className="flex space-x-2">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pt-2">
+              
+              {/* Segmented Control - Pill Group */}
+              <div className="flex items-center space-x-3">
+                <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Origem:</span>
+                <div className="bg-[#141426] p-1 rounded-full border border-[rgba(255,255,255,0.06)] flex space-x-1">
                   {(["google", "instagram", "tiktok"] as const).map((src) => (
                     <button
                       key={src}
@@ -251,10 +348,10 @@ export default function LeadsSearchPage() {
                           setEmailRequired(false);
                         }
                       }}
-                      className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider border transition-all duration-150 ${
+                      className={`px-4 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wider transition-all duration-150 cursor-pointer ${
                         source === src
-                          ? "bg-white text-black border-white"
-                          : "bg-[#111] text-gray-400 border-[#222] hover:text-white"
+                          ? "btn-primary shadow-glow-sm"
+                          : "bg-transparent text-gray-400 hover:text-white"
                       }`}
                     >
                       {src === "google" ? "Google Maps" : src === "instagram" ? "Instagram" : "TikTok"}
@@ -263,49 +360,75 @@ export default function LeadsSearchPage() {
                 </div>
               </div>
 
-              {/* Checkboxes (Only for Google Maps) */}
+              {/* Checkboxes Customizados */}
               {source === "google" && (
-                <div className="flex items-center space-x-6">
-                  <label className="flex items-center space-x-2 text-xs text-gray-300 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={phoneRequired}
-                      onChange={(e) => setPhoneRequired(e.target.checked)}
-                      className="w-4 h-4 accent-white cursor-pointer"
-                    />
-                    <span>Telefone Obrigatório</span>
-                  </label>
-                  <label className="flex items-center space-x-2 text-xs text-gray-300 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={emailRequired}
-                      onChange={(e) => setEmailRequired(e.target.checked)}
-                      className="w-4 h-4 accent-white cursor-pointer"
-                    />
-                    <span>E-mail Obrigatório</span>
-                  </label>
+                <div className="flex flex-wrap items-center gap-6">
+                  <div 
+                    onClick={() => setPhoneRequired(!phoneRequired)}
+                    className="flex items-center space-x-2.5 cursor-pointer group"
+                  >
+                    <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${
+                      phoneRequired 
+                        ? "bg-gradient-to-br from-[#6b2fb5] to-[#a855f7] border-transparent" 
+                        : "border-[rgba(139,69,212,0.3)] bg-transparent group-hover:border-[#8b45d4]"
+                    }`}>
+                      {phoneRequired && <Check className="w-3 h-3 text-white stroke-[3px]" />}
+                    </div>
+                    <span className="text-xs text-gray-300 font-medium">Telefone Obrigatório</span>
+                  </div>
+
+                  <div 
+                    onClick={() => setEmailRequired(!emailRequired)}
+                    className="flex items-center space-x-2.5 cursor-pointer group"
+                  >
+                    <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${
+                      emailRequired 
+                        ? "bg-gradient-to-br from-[#6b2fb5] to-[#a855f7] border-transparent" 
+                        : "border-[rgba(139,69,212,0.3)] bg-transparent group-hover:border-[#8b45d4]"
+                    }`}>
+                      {emailRequired && <Check className="w-3 h-3 text-white stroke-[3px]" />}
+                    </div>
+                    <span className="text-xs text-gray-300 font-medium">E-mail Obrigatório</span>
+                  </div>
                 </div>
               )}
 
               {/* Social Warning */}
               {source !== "google" && (
-                <div className="text-xs text-yellow-500 bg-yellow-950/20 border border-yellow-500/20 px-3 py-2 rounded-lg">
-                  ⚠️ A busca no Instagram/TikTok retorna o @ do perfil. Dados de contato não estão disponíveis.
+                <div className="flex items-center space-x-2 text-xs text-[#fbbf24] bg-yellow-950/15 border border-yellow-500/20 px-3.5 py-2 rounded-lg max-w-md animate-in fade-in duration-200">
+                  <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                  <span>A busca no Instagram/TikTok retorna o @. Dados de contato não disponíveis.</span>
                 </div>
               )}
             </div>
 
-            <div className="flex justify-between items-center pt-2">
-              <span className="text-[11px] text-gray-500 leading-normal max-w-md">
-                A quantidade de resultados depende da disponibilidade de dados no Google para cada busca.
-              </span>
+            {/* Aviso informativo e Botão */}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pt-3">
+              {source === "google" ? (
+                <div className="flex items-center space-x-2 text-[11px] text-purple-300 bg-[rgba(139,69,212,0.06)] border border-[rgba(139,69,212,0.15)] px-3 py-2 rounded-lg">
+                  <Info className="w-4 h-4 text-[#c084fc] flex-shrink-0" />
+                  <span>Resultados sujeitos à disponibilidade dos dados do Google.</span>
+                </div>
+              ) : (
+                <div className="w-[10px] h-[10px]"></div>
+              )}
+              
               <button
                 type="submit"
                 disabled={loading}
-                className="premium-button-primary flex items-center space-x-2"
+                className="btn-primary w-full sm:w-auto px-6 py-2.5 text-xs font-semibold uppercase tracking-wider flex items-center justify-center space-x-2 shadow-glow-sm"
               >
-                <Search className="w-4 h-4" />
-                <span>{loading ? "Buscando..." : "Buscar Leads"}</span>
+                {loading ? (
+                  <>
+                    <div className="w-4 h-4 border border-t-white border-r-[#222]/30 border-b-[#222]/30 border-l-[#222]/30 rounded-full animate-spin"></div>
+                    <span>Buscando...</span>
+                  </>
+                ) : (
+                  <>
+                    <Search className="w-4 h-4" />
+                    <span>Buscar Leads</span>
+                  </>
+                )}
               </button>
             </div>
           </form>
@@ -313,18 +436,18 @@ export default function LeadsSearchPage() {
 
         {/* Results section */}
         {results.length > 0 && (
-          <div className="premium-card overflow-hidden">
+          <div className="card overflow-hidden">
             {/* Header / Actions toolbar */}
-            <div className="p-4 border-b border-[#222] bg-[#161616] flex items-center justify-between flex-wrap gap-4">
-              <div className="text-xs text-gray-400">
-                {selectedLeads.length} de {results.length} leads selecionados
+            <div className="p-4 border-b border-[rgba(139,69,212,0.12)] bg-[#0f0f1a]/85 flex items-center justify-between flex-wrap gap-4">
+              <div className="text-xs text-gray-500 font-medium">
+                {selectedLeads.length} de <span className="text-white font-bold">{results.length}</span> leads selecionados
               </div>
 
               <div className="flex items-center space-x-2">
                 {selectedLeads.length > 0 && (
                   <button
                     onClick={handleDeleteSelected}
-                    className="flex items-center space-x-2 px-3 py-2 rounded-lg bg-red-950/30 border border-red-500/20 text-red-500 text-xs font-bold uppercase hover:bg-red-950/50 transition-all duration-150"
+                    className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-red-950/25 border border-red-500/20 text-red-400 hover:text-red-300 hover:bg-red-950/40 text-xs font-bold uppercase transition-all duration-150 cursor-pointer"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                     <span>Excluir selecionados</span>
@@ -332,7 +455,7 @@ export default function LeadsSearchPage() {
                 )}
                 <button
                   onClick={handleExport}
-                  className="premium-button-secondary flex items-center space-x-2"
+                  className="btn-secondary flex items-center space-x-2 text-xs py-1.5"
                 >
                   <FileDown className="w-4 h-4" />
                   <span>Exportar Excel</span>
@@ -342,15 +465,19 @@ export default function LeadsSearchPage() {
 
             <div className="overflow-x-auto">
               <table className="premium-table">
-                <thead>
+                <thead className="bg-[#141426]">
                   <tr>
                     <th className="w-10">
-                      <input
-                        type="checkbox"
-                        checked={selectedLeads.length === results.length}
-                        onChange={toggleSelectAll}
-                        className="w-4 h-4 accent-white cursor-pointer"
-                      />
+                      <div 
+                        onClick={toggleSelectAll}
+                        className={`w-4 h-4 rounded border flex items-center justify-center cursor-pointer transition-all ${
+                          selectedLeads.length === results.length
+                            ? "bg-gradient-to-br from-[#6b2fb5] to-[#a855f7] border-transparent" 
+                            : "border-[rgba(139,69,212,0.3)] bg-transparent"
+                        }`}
+                      >
+                        {selectedLeads.length === results.length && <Check className="w-3 h-3 text-white stroke-[3px]" />}
+                      </div>
                     </th>
                     <th>Nome</th>
                     <th>Categoria</th>
@@ -363,23 +490,33 @@ export default function LeadsSearchPage() {
                 </thead>
                 <tbody>
                   {paginatedResults.map((lead) => (
-                    <tr key={lead.id}>
+                    <tr key={lead.id} className="hover:bg-[rgba(139,69,212,0.04)] transition-colors">
                       <td>
-                        <input
-                          type="checkbox"
-                          checked={selectedLeads.includes(lead.id)}
-                          onChange={() => toggleSelectOne(lead.id)}
-                          className="w-4 h-4 accent-white cursor-pointer"
-                        />
+                        <div 
+                          onClick={() => toggleSelectOne(lead.id)}
+                          className={`w-4 h-4 rounded border flex items-center justify-center cursor-pointer transition-all ${
+                            selectedLeads.includes(lead.id)
+                              ? "bg-gradient-to-br from-[#6b2fb5] to-[#a855f7] border-transparent" 
+                              : "border-[rgba(139,69,212,0.2)] bg-transparent"
+                          }`}
+                        >
+                          {selectedLeads.includes(lead.id) && <Check className="w-3 h-3 text-white stroke-[3px]" />}
+                        </div>
                       </td>
                       <td className="font-semibold text-white">{lead.name}</td>
-                      <td>{lead.category || "—"}</td>
+                      <td>
+                        {lead.category ? (
+                          <span className="badge badge-purple">{lead.category}</span>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
                       <td>
                         {lead.city ? `${lead.city}, ${lead.state || "—"}` : "—"}
                       </td>
                       <td>
                         {lead.phone ? (
-                          <a href={`tel:${lead.phone}`} className="text-white hover:underline">
+                          <a href={`tel:${lead.phone}`} className="text-white hover:text-[#a855f7] hover:underline font-medium font-mono text-xs">
                             {lead.phone}
                           </a>
                         ) : (
@@ -388,7 +525,7 @@ export default function LeadsSearchPage() {
                       </td>
                       <td>
                         {lead.email ? (
-                          <a href={`mailto:${lead.email}`} className="text-white hover:underline text-xs">
+                          <a href={`mailto:${lead.email}`} className="text-gray-400 hover:text-white hover:underline text-xs">
                             {lead.email}
                           </a>
                         ) : (
@@ -401,7 +538,7 @@ export default function LeadsSearchPage() {
                             href={`https://instagram.com/${lead.instagram.replace("@", "")}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-white hover:underline text-xs"
+                            className="text-gray-400 hover:text-white hover:underline text-xs"
                           >
                             {lead.instagram}
                           </a>
@@ -415,7 +552,7 @@ export default function LeadsSearchPage() {
                             href={lead.website.startsWith("http") ? lead.website : `https://${lead.website}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-white hover:underline text-xs"
+                            className="text-[#c084fc] hover:text-[#a855f7] hover:underline text-xs font-semibold"
                           >
                             Site
                           </a>
@@ -431,21 +568,21 @@ export default function LeadsSearchPage() {
 
             {/* Pagination footer */}
             {totalPages > 1 && (
-              <div className="p-4 border-t border-[#222] bg-[#161616] flex items-center justify-between">
+              <div className="p-4 border-t border-[rgba(139,69,212,0.12)] bg-[#0f0f1a] flex items-center justify-between">
                 <button
                   disabled={page === 1}
                   onClick={() => setPage(page - 1)}
-                  className="premium-button-secondary text-xs uppercase disabled:opacity-40"
+                  className="btn-secondary text-xs uppercase disabled:opacity-40"
                 >
                   Anterior
                 </button>
-                <span className="text-xs text-gray-400">
-                  Página {page} de {totalPages}
+                <span className="text-xs text-gray-500 font-medium">
+                  Página <span className="text-white font-bold">{page}</span> de {totalPages}
                 </span>
                 <button
                   disabled={page === totalPages}
                   onClick={() => setPage(page + 1)}
-                  className="premium-button-secondary text-xs uppercase disabled:opacity-40"
+                  className="btn-secondary text-xs uppercase disabled:opacity-40"
                 >
                   Próxima
                 </button>
@@ -456,12 +593,14 @@ export default function LeadsSearchPage() {
 
         {/* Empty state */}
         {!loading && results.length === 0 && (
-          <div className="premium-card p-12 text-center flex flex-col items-center justify-center space-y-4">
-            <span className="text-4xl text-gray-600">🔍</span>
-            <div className="max-w-sm space-y-1">
-              <h3 className="text-sm font-bold text-white uppercase tracking-wider">Nenhum lead carregado</h3>
+          <div className="card p-16 text-center flex flex-col items-center justify-center space-y-4">
+            <div className="w-12 h-12 rounded-full bg-[#141426] flex items-center justify-center text-gray-500">
+              <Search className="w-6 h-6 text-gray-600" />
+            </div>
+            <div className="max-w-sm space-y-1.5">
+              <h3 className="text-sm font-bold text-white uppercase tracking-wider">Encontre seus primeiros leads</h3>
               <p className="text-xs text-gray-500 leading-relaxed">
-                Preencha o formulário acima para realizar uma busca inteligente no Google Maps ou mídias sociais.
+                Digite uma palavra-chave e cidade acima para começar a prospectar e coletar dados.
               </p>
             </div>
           </div>
@@ -471,10 +610,10 @@ export default function LeadsSearchPage() {
         {loading && (
           <div className="space-y-4">
             {[1, 2, 3].map((x) => (
-              <div key={x} className="premium-card p-6 animate-pulse flex flex-col space-y-3">
-                <div className="h-4 bg-[#222] rounded w-1/4"></div>
-                <div className="h-3 bg-[#222] rounded w-1/2"></div>
-                <div className="h-3 bg-[#222] rounded w-1/3"></div>
+              <div key={x} className="card p-6 animate-pulse flex flex-col space-y-3">
+                <div className="h-4 bg-[#141426] rounded w-1/4"></div>
+                <div className="h-3 bg-[#141426] rounded w-1/2"></div>
+                <div className="h-3 bg-[#141426] rounded w-1/3"></div>
               </div>
             ))}
           </div>
@@ -482,14 +621,19 @@ export default function LeadsSearchPage() {
 
         {/* Upgrade / Limit reached Modal */}
         {showUpgradeModal && (
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="w-full max-w-md bg-[#111] border border-[#222] rounded-xl p-8 shadow-2xl flex flex-col space-y-6">
-              <h3 className="text-lg font-bold text-white uppercase tracking-wider">Limite atingido</h3>
-              <p className="text-sm text-gray-400 leading-relaxed">{upgradeMsg}</p>
-              <div className="flex space-x-3">
+          <div className="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="w-full max-w-md bg-[#0f0f1a] border border-[#a855f7]/30 rounded-xl p-8 shadow-glow-md flex flex-col space-y-6 animate-in scale-in duration-200">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-full bg-purple-950/50 border border-[#a855f7]/30 flex items-center justify-center">
+                  <Bolt className="w-5 h-5 text-[#a855f7] fill-[#a855f7]" />
+                </div>
+                <h3 className="text-md font-bold text-white uppercase tracking-wider">Limite de Leads Atingido</h3>
+              </div>
+              <p className="text-xs text-gray-400 leading-relaxed">{upgradeMsg}</p>
+              <div className="flex space-x-3 pt-2 border-t border-[rgba(139,69,212,0.12)]">
                 <button
                   onClick={() => setShowUpgradeModal(false)}
-                  className="flex-1 premium-button-secondary uppercase text-xs"
+                  className="flex-1 btn-secondary uppercase text-xs"
                 >
                   Voltar
                 </button>
@@ -498,7 +642,7 @@ export default function LeadsSearchPage() {
                     setShowUpgradeModal(false);
                     router.push("/dashboard/config");
                   }}
-                  className="flex-1 premium-button-primary uppercase text-xs"
+                  className="flex-1 btn-primary uppercase text-xs justify-center"
                 >
                   Ver planos de upgrade
                 </button>
