@@ -65,10 +65,14 @@ export default function LeadsSearchPage() {
         .map((l) => l.trim())
         .filter((l) => l.length > 0);
 
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+
       const res = await fetch("/api/search", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          ...(token ? { "Authorization": `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({
           userId: profile.id,

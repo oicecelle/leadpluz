@@ -21,6 +21,7 @@ interface Step {
   messageType: "text" | "image" | "file";
   mediaUrl: string;
   triggerKeyword: string;
+  triggerType: "exact" | "contains" | "context";
   statusAfterSend: string;
   waitMinutes: number;
 }
@@ -52,6 +53,7 @@ export default function DisparosPage() {
       messageType: "text",
       mediaUrl: "",
       triggerKeyword: "",
+      triggerType: "contains",
       statusAfterSend: "contacted",
       waitMinutes: 0,
     },
@@ -141,6 +143,7 @@ export default function DisparosPage() {
           messageType: "text",
           mediaUrl: "",
           triggerKeyword: "",
+          triggerType: "contains",
           statusAfterSend: "contacted",
           waitMinutes: 0,
         },
@@ -163,6 +166,7 @@ export default function DisparosPage() {
           messageType: s.message_type || "text",
           mediaUrl: s.media_url || "",
           triggerKeyword: s.trigger_keyword || "",
+          triggerType: s.trigger_type || "contains",
           statusAfterSend: s.status_after_send || "contacted",
           waitMinutes: s.wait_minutes || 0,
         })));
@@ -229,6 +233,7 @@ export default function DisparosPage() {
         message_type: step.messageType || "text",
         media_url: step.mediaUrl || null,
         trigger_keyword: step.triggerKeyword || null,
+        trigger_type: step.triggerType || "contains",
         status_after_send: step.statusAfterSend || "contacted",
         wait_minutes: step.waitMinutes || null
       }));
@@ -322,6 +327,7 @@ export default function DisparosPage() {
       messageType: "text",
       mediaUrl: "",
       triggerKeyword: "Quero saber mais",
+      triggerType: "contains",
       statusAfterSend: "proposal_sent",
       waitMinutes: 0,
     };
@@ -612,11 +618,33 @@ export default function DisparosPage() {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="flex flex-col space-y-1">
                           <label className="text-[10px] font-bold text-gray-500 uppercase">
-                            Se a resposta contiver (Gatilho)
+                            Tipo de Validação do Gatilho
+                          </label>
+                          <select
+                            value={step.triggerType || "contains"}
+                            onChange={(e) => {
+                              const updated = [...steps];
+                              const s = updated[idx];
+                              if (s) {
+                                s.triggerType = e.target.value as any;
+                                setSteps(updated);
+                              }
+                            }}
+                            className="premium-input text-xs"
+                          >
+                            <option value="contains">Se Contém a palavra</option>
+                            <option value="exact">Palavra Exata</option>
+                            <option value="context">Pelo Contexto (Inteligência Artificial)</option>
+                          </select>
+                        </div>
+
+                        <div className="flex flex-col space-y-1">
+                          <label className="text-[10px] font-bold text-gray-500 uppercase">
+                            {step.triggerType === "context" ? "Intenção/Contexto Esperado" : "Palavra-Chave / Gatilho"}
                           </label>
                           <input
                             type="text"
-                            placeholder="Quero saber mais, preço, info"
+                            placeholder={step.triggerType === "context" ? "Ex: Demonstrou interesse, Tirar dúvida..." : "Quero saber mais, preço, info"}
                             value={step.triggerKeyword}
                             onChange={(e) => {
                               const updated = [...steps];
@@ -629,6 +657,13 @@ export default function DisparosPage() {
                             className="premium-input text-xs"
                           />
                         </div>
+
+                        {step.triggerType === "context" && (
+                          <div className="md:col-span-2 text-[10px] text-yellow-500 bg-yellow-950/20 border border-yellow-500/20 p-2 rounded-lg leading-relaxed flex items-center space-x-2">
+                            <span className="font-semibold">⚠️ Nota:</span>
+                            <span>A Inteligência Artificial analisará a resposta livre do cliente para inferir essa intenção. *Aviso: a IA pode cometer erros de interpretação.*</span>
+                          </div>
+                        )}
                       </div>
                     )}
 
@@ -676,7 +711,11 @@ export default function DisparosPage() {
                 ))}
               </div>
 
-              <div className="flex justify-end pt-4 border-t border-[#222]">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pt-4 border-t border-[#222]">
+                <div className="text-[10px] text-gray-400 max-w-md leading-normal flex items-center space-x-1.5 bg-[#161616] p-2 rounded-lg border border-[#222]">
+                  <AlertTriangle className="w-3.5 h-3.5 text-yellow-500 flex-shrink-0" />
+                  <span>Atenção: A interpretação contextual e classificação de leads por Inteligência Artificial é automatizada. A IA pode cometer erros de interpretação.</span>
+                </div>
                 <button
                   onClick={handleStartBroadcast}
                   className="premium-button-primary flex items-center space-x-2 text-xs uppercase"

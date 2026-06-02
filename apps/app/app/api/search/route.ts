@@ -1,5 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@repo/supabase";
+import { supabase as anonClient } from "@repo/supabase";
+import { createClient } from "@supabase/supabase-js";
+
+// Initialize an admin client using the service role key to perform operations that bypass RLS (e.g. updating general cache leads_geral, and profile quota limits) after validating user session
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://vgqwvycmxmlofwepstcd.supabase.co';
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+const adminClient = supabaseServiceKey
+  ? createClient(supabaseUrl, supabaseServiceKey)
+  : anonClient;
+
+const supabase = adminClient;
 
 // Mock lead generator if API keys are missing
 function generateMockLeads(keyword: string, location: string, count: number = 10) {
@@ -42,10 +53,24 @@ function generateMockLeads(keyword: string, location: string, count: number = 10
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { userId, keywords, locations, source, filters } = body;
+    // 1. Validate authorization token
+    const authHeader = request.headers.get("Authorization");
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return NextResponse.json({ error: "Não autorizado: token ausente." }, { status: 401 });
+    }
+    const token = authHeader.split(" ")[1];
+    const { data: { user }, error: authErr } = await anonClient.auth.getUser(token);
+    
+    if (authErr || !user) {
+      return NextResponse.json({ error: "Não autorizado: token inválido." }, { status: 401 });
+    }
 
-    if (!userId || !keywords || keywords.length === 0) {
+    const userId = user.id;
+
+    const body = await request.json();
+    const { keywords, locations, source, filters } = body;
+
+    if (!keywords || keywords.length === 0) {
       return NextResponse.json({ error: "Faltam parâmetros obrigatórios." }, { status: 400 });
     }
 
