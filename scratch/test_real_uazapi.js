@@ -1,0 +1,32 @@
+const token = '5d04747c-dff1-42b9-a70d-1baadb580093';
+const baseUrl = 'https://customix.uazapi.com';
+
+async function test(url, method = 'GET', body = null) {
+  console.log(`\nTesting ${method} ${url}...`);
+  try {
+    const opts = {
+      method,
+      headers: {
+        'token': token,
+        'Content-Type': 'application/json'
+      }
+    };
+    if (body) opts.body = JSON.stringify(body);
+    const r = await fetch(url, opts);
+    console.log(`Response status: ${r.status}`);
+    const data = await r.text();
+    console.log(`Response body: ${data.slice(0, 1000)}`);
+  } catch (e) {
+    console.log(`Error: ${e.message}`);
+  }
+}
+
+async function run() {
+  await test(`${baseUrl}/instance/status`, 'GET');
+  await test(`${baseUrl}/instance/connect`, 'POST');
+  await test(`${baseUrl}/instance/connect`, 'GET');
+  await test(`${baseUrl}/instance/qrcode`, 'GET');
+  await test(`${baseUrl}/instance/qr`, 'GET');
+}
+
+run();
