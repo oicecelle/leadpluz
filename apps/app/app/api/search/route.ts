@@ -268,7 +268,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Faltam parâmetros obrigatórios." }, { status: 400 });
     }
 
-    // 1. Get user profile and check leads limit
+    // 2. Get user profile and check leads limit
     const { data: profile, error: profErr } = await (supabase.from("profiles") as any)
       .select("leads_used_this_cycle, leads_limit")
       .eq("id", userId)
@@ -283,101 +283,132 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Saldo esgotado", code: "BALANCE_EXHAUSTED" });
     }
 
+    // 3. Get leads the user already has to avoid duplicates
+    const { data: existingUserLeads } = await (supabase.from("user_leads") as any)
+      .select("phone, email")
+      .eq("user_id", userId);
+
+    const existingPhones = new Set((existingUserLeads || []).map((l: any) => l.phone).filter(Boolean));
+    const existingEmails = new Set((existingUserLeads || []).map((l: any) => l.email).filter(Boolean));
+
     const allFoundLeads: any[] = [];
     const googleApiKey = process.env.GOOGLE_API_KEY;
     const googleCseId = process.env.GOOGLE_CSE_ID;
 
-    // We process each keyword and location combination
     for (const keyword of keywords) {
-      const locList = source === "google" ? locations : ["Social Search"];
+      const locList = source === "google" ? (locations && locations.length > 0 ? locations : ["Brasil"]) : ["Social Search"];
+      
       for (const loc of locList) {
         const cleanKeyword = keyword.trim().toLowerCase();
         const cleanLoc = loc.trim().toLowerCase();
-
         const mappedCategory = getCategoryFromKeyword(cleanKeyword);
-
-        // Check if we already have leads of this category in this city in leads_geral
-        const { data: cachedLeads } = await (supabase.from("leads_geral") as any)
-          .select("*")
-          .eq("category", mappedCategory)
-          .eq("city", cleanLoc);
 
         let leadsForQuery: any[] = [];
 
-        if (cachedLeads && cachedLeads.length > 0) {
-          console.log(`Reutilizando ${cachedLeads.length} leads da categoria "${mappedCategory}" na cidade "${cleanLoc}" do banco.`);
-          leadsForQuery = cachedLeads;
+        // STEP 1: Try to find real leads in leads_geral by category + city
+        const { data: cachedByCategory } = await (supabase.from("leads_geral") as any)
+          .select("*")
+          .eq("category", mappedCategory)
+          .ilike("city", `%${cleanLoc.split(",")[0].trim()}%`)
+          .limit(50);
+
+        if (cachedByCategory && cachedByCategory.length > 0) {
+          console.log(`[CACHE] ${cachedByCategory.length} leads da categoria "${mappedCategory}" em "${cleanLoc}"`);
+          leadsForQuery = cachedByCategory;
         }
 
+        // STEP 2: If no category match, try keyword match in leads_geral
         if (leadsForQuery.length === 0) {
-          // If no cache or invalid, perform search
+          const { data: cachedByKeyword } = await (supabase.from("leads_geral") as any)
+            .select("*")
+            .eq("search_keyword", cleanKeyword)
+            .ilike("city", `%${cleanLoc.split(",")[0].trim()}%`)
+            .limit(50);
+
+          if (cachedByKeyword && cachedByKeyword.length > 0) {
+            console.log(`[CACHE] ${cachedByKeyword.length} leads pela keyword "${cleanKeyword}" em "${cleanLoc}"`);
+            leadsForQuery = cachedByKeyword;
+          }
+        }
+
+        // STEP 3: If still nothing, try Google Custom Search API
+        if (leadsForQuery.length === 0) {
           if (googleApiKey && googleCseId && source === "google") {
-            console.log(`Buscando via Google API para: ${cleanKeyword} em ${cleanLoc}`);
-            leadsForQuery = await fetchGoogleLeads(cleanKeyword, cleanLoc, googleApiKey, googleCseId, 10);
+            console.log(`[GOOGLE] Buscando: "${cleanKeyword}" em "${cleanLoc}"`);
+            const googleLeads = await fetchGoogleLeads(cleanKeyword, cleanLoc, googleApiKey, googleCseId, 10);
             
-            // Fallback to mock if API returned 0 results (limit reached or query found nothing)
-            if (leadsForQuery.length === 0) {
-              console.log("Nenhum resultado com telefone via Google API, utilizando fallback mock.");
-              leadsForQuery = generateMockLeads(cleanKeyword, cleanLoc, 10);
+            if (googleLeads.length > 0) {
+              // Save to leads_geral for future cache
+              const { data: insertedGeralLeads, error: insErr } = await (supabase.from("leads_geral") as any)
+                .insert(googleLeads.map((l: any) => ({
+                  name: l.name,
+                  category: l.category,
+                  city: l.city,
+                  state: l.state,
+                  phone: l.phone,
+                  email: l.email,
+                  website: l.website,
+                  instagram: l.instagram,
+                  tiktok: l.tiktok,
+                  source: l.source,
+                  search_keyword: l.search_keyword
+                })))
+                .select();
+
+              if (!insErr && insertedGeralLeads && insertedGeralLeads.length > 0) {
+                leadsForQuery = insertedGeralLeads;
+              } else {
+                leadsForQuery = googleLeads;
+              }
+
+              // Update search_cache
+              await (supabase.from("search_cache") as any)
+                .upsert({
+                  keyword: cleanKeyword,
+                  city: cleanLoc,
+                  state: loc.split(",")[1]?.trim() || null,
+                  result_count: leadsForQuery.length,
+                  last_fetched_at: new Date().toISOString()
+                }, { onConflict: "keyword,city,state" });
+            } else {
+              console.log(`[GOOGLE] Nenhum resultado com telefone para "${cleanKeyword}" em "${cleanLoc}"`);
             }
           } else {
-            // Generate mock leads
-            leadsForQuery = generateMockLeads(cleanKeyword, cleanLoc, 12);
-          }
-
-          // Save new leads to leads_geral
-          if (leadsForQuery.length > 0) {
-            const { data: insertedGeralLeads, error: insErr } = await (supabase.from("leads_geral") as any)
-              .insert(leadsForQuery.map(l => ({
-                name: l.name,
-                category: l.category,
-                city: l.city,
-                state: l.state,
-                phone: l.phone,
-                email: l.email,
-                website: l.website,
-                instagram: l.instagram,
-                tiktok: l.tiktok,
-                source: l.source,
-                search_keyword: l.search_keyword
-              })))
-              .select();
-
-            if (insErr) {
-              console.error("Erro ao salvar leads na base geral:", insErr.message);
-            } else if (insertedGeralLeads && insertedGeralLeads.length > 0) {
-              leadsForQuery = insertedGeralLeads;
-            }
-
-            // Update search_cache
-            const { error: cacheErr } = await (supabase.from("search_cache") as any)
-              .upsert({
-                keyword: cleanKeyword,
-                city: cleanLoc,
-                state: loc.split(',')[1]?.trim() || null,
-                result_count: leadsForQuery.length,
-                last_fetched_at: new Date().toISOString()
-              }, { onConflict: "keyword,city,state" });
-
-            if (cacheErr) console.error("Erro ao salvar cache de busca:", cacheErr.message);
+            console.log(`[INFO] Google API não configurada. Sem resultados reais para "${cleanKeyword}" em "${cleanLoc}".`);
           }
         }
 
-        // Apply obrigatório filters for Phone / Email
+        // STEP 4: Apply required filters
         if (source === "google") {
           if (filters?.phoneRequired) {
-            leadsForQuery = leadsForQuery.filter(l => l.phone);
+            leadsForQuery = leadsForQuery.filter((l: any) => l.phone);
           }
           if (filters?.emailRequired) {
-            leadsForQuery = leadsForQuery.filter(l => l.email);
+            leadsForQuery = leadsForQuery.filter((l: any) => l.email);
           }
         }
+
+        // STEP 5: Remove leads the user already has (dedup by phone and email)
+        leadsForQuery = leadsForQuery.filter((l: any) => {
+          if (l.phone && existingPhones.has(l.phone)) return false;
+          if (l.email && existingEmails.has(l.email)) return false;
+          return true;
+        });
 
         allFoundLeads.push(...leadsForQuery);
       }
     }
 
-    // Check if we exceed user balance
+    // 4. If no real leads found, return clear message (never return mock data)
+    if (allFoundLeads.length === 0) {
+      const hasGoogleApi = !!(googleApiKey && googleCseId);
+      const msg = hasGoogleApi
+        ? "Nenhum lead encontrado para essa busca. Tente palavras-chave ou cidades diferentes."
+        : "Nenhum lead encontrado na base de dados para essa categoria/cidade. Configure a API do Google Custom Search para buscar novos leads.";
+      return NextResponse.json({ leads: [], limitReached: false, message: msg });
+    }
+
+    // 5. Trim to user balance
     let deliveredLeads = allFoundLeads;
     let limitReached = false;
     if (allFoundLeads.length > balance) {
@@ -385,12 +416,8 @@ export async function POST(request: NextRequest) {
       limitReached = true;
     }
 
-    if (deliveredLeads.length === 0) {
-      return NextResponse.json({ leads: [], limitReached: false });
-    }
-
-    // Insert into user_leads
-    const userLeadsToInsert = deliveredLeads.map(l => ({
+    // 6. Insert into user_leads
+    const userLeadsToInsert = deliveredLeads.map((l: any) => ({
       user_id: userId,
       lead_id: l.id || null,
       name: l.name,
@@ -415,31 +442,34 @@ export async function POST(request: NextRequest) {
       throw userLeadsErr;
     }
 
-    // Debit balance
+    // 7. Debit balance
     const newUsed = profile.leads_used_this_cycle + deliveredLeads.length;
-    await (supabase.from("profiles") as any)
+    const { error: updateErr } = await (supabase.from("profiles") as any)
       .update({ leads_used_this_cycle: newUsed })
       .eq("id", userId);
 
-    // Write to usage log
+    if (updateErr) {
+      console.error("Erro ao debitar créditos:", updateErr.message);
+    }
+
+    // 8. Write usage log
     const usageLogs = keywords.map((k: string) => ({
       user_id: userId,
       leads_count: Math.ceil(deliveredLeads.length / keywords.length),
       search_keyword: k,
-      search_location: locations.join(", "),
+      search_location: (locations || []).join(", "),
       source: source === "google" ? "google_api" : source === "instagram" ? "instagram" : "tiktok"
     }));
-
     await (supabase.from("lead_usage_log") as any).insert(usageLogs);
 
-    // Write api cost logs for admin
+    // 9. Write api cost log for admin
     await (supabase.from("api_cost_log") as any).insert({
       user_id: userId,
       keyword: keywords.join(", "),
-      city: locations.join(", "),
+      city: (locations || []).join(", "),
       calls_made: 1,
       results_returned: deliveredLeads.length,
-      estimated_cost_usd: 0.10 // Simulate $0.10 cost per search
+      estimated_cost_usd: googleApiKey && googleCseId ? 0.10 : 0.00
     });
 
     return NextResponse.json({
@@ -453,3 +483,5 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
+
+
