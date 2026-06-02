@@ -301,44 +301,74 @@ export async function POST(request: NextRequest) {
       for (const loc of locList) {
         const cleanKeyword = keyword.trim().toLowerCase();
         const cleanLoc = loc.trim().toLowerCase();
-        const mappedCategory = getCategoryFromKeyword(cleanKeyword);
 
         let leadsForQuery: any[] = [];
+        const cityPart = cleanLoc.split(",")[0].trim();
 
-        // STEP 1: Try to find real leads in leads_geral by category + city
-        const { data: cachedByCategory } = await (supabase.from("leads_geral") as any)
+        // STEP 1: Search leads_geral by keyword similarity in category field + city
+        // This finds leads like "botox" matching "Toxina botulinica", "design sobrancelha" matching "Design de sobrancelhas" etc.
+        const { data: byKeywordInCategory } = await (supabase.from("leads_geral") as any)
           .select("*")
-          .eq("category", mappedCategory)
-          .ilike("city", `%${cleanLoc.split(",")[0].trim()}%`)
+          .ilike("category", `%${cleanKeyword}%`)
+          .ilike("city", `%${cityPart}%`)
           .limit(50);
 
-        if (cachedByCategory && cachedByCategory.length > 0) {
-          console.log(`[CACHE] ${cachedByCategory.length} leads da categoria "${mappedCategory}" em "${cleanLoc}"`);
-          leadsForQuery = cachedByCategory;
+        if (byKeywordInCategory && byKeywordInCategory.length > 0) {
+          console.log(`[STEP1] ${byKeywordInCategory.length} leads via keyword na categoria em "${cityPart}"`);
+          leadsForQuery = byKeywordInCategory;
         }
 
-        // STEP 2: If no category match, try keyword match in leads_geral
+        // STEP 2: If no city match, try keyword in category nationwide
         if (leadsForQuery.length === 0) {
-          const { data: cachedByKeyword } = await (supabase.from("leads_geral") as any)
+          const { data: byKeywordNationwide } = await (supabase.from("leads_geral") as any)
             .select("*")
-            .eq("search_keyword", cleanKeyword)
-            .ilike("city", `%${cleanLoc.split(",")[0].trim()}%`)
+            .ilike("category", `%${cleanKeyword}%`)
             .limit(50);
 
-          if (cachedByKeyword && cachedByKeyword.length > 0) {
-            console.log(`[CACHE] ${cachedByKeyword.length} leads pela keyword "${cleanKeyword}" em "${cleanLoc}"`);
-            leadsForQuery = cachedByKeyword;
+          if (byKeywordNationwide && byKeywordNationwide.length > 0) {
+            console.log(`[STEP2] ${byKeywordNationwide.length} leads via keyword na categoria (nacional)`);
+            leadsForQuery = byKeywordNationwide;
           }
         }
 
-        // STEP 3: If still nothing, try Google Custom Search API
+        // STEP 3: Try keyword in name field + city
+        if (leadsForQuery.length === 0) {
+          const { data: byKeywordInName } = await (supabase.from("leads_geral") as any)
+            .select("*")
+            .ilike("name", `%${cleanKeyword}%`)
+            .ilike("city", `%${cityPart}%`)
+            .limit(50);
+
+          if (byKeywordInName && byKeywordInName.length > 0) {
+            console.log(`[STEP3] ${byKeywordInName.length} leads via keyword no nome em "${cityPart}"`);
+            leadsForQuery = byKeywordInName;
+          }
+        }
+
+        // STEP 4: Try mapped category name + city (for generic terms like "dentista" → "Clínica Odontológica")
+        if (leadsForQuery.length === 0) {
+          const mappedCategory = getCategoryFromKeyword(cleanKeyword);
+          if (mappedCategory !== "Comércio local") {
+            const { data: byMappedCategory } = await (supabase.from("leads_geral") as any)
+              .select("*")
+              .ilike("category", `%${mappedCategory}%`)
+              .ilike("city", `%${cityPart}%`)
+              .limit(50);
+
+            if (byMappedCategory && byMappedCategory.length > 0) {
+              console.log(`[STEP4] ${byMappedCategory.length} leads via categoria mapeada "${mappedCategory}" em "${cityPart}"`);
+              leadsForQuery = byMappedCategory;
+            }
+          }
+        }
+
+        // STEP 5: Google Custom Search API (only if nothing found locally)
         if (leadsForQuery.length === 0) {
           if (googleApiKey && googleCseId && source === "google") {
             console.log(`[GOOGLE] Buscando: "${cleanKeyword}" em "${cleanLoc}"`);
             const googleLeads = await fetchGoogleLeads(cleanKeyword, cleanLoc, googleApiKey, googleCseId, 10);
             
             if (googleLeads.length > 0) {
-              // Save to leads_geral for future cache
               const { data: insertedGeralLeads, error: insErr } = await (supabase.from("leads_geral") as any)
                 .insert(googleLeads.map((l: any) => ({
                   name: l.name,
@@ -355,13 +385,10 @@ export async function POST(request: NextRequest) {
                 })))
                 .select();
 
-              if (!insErr && insertedGeralLeads && insertedGeralLeads.length > 0) {
-                leadsForQuery = insertedGeralLeads;
-              } else {
-                leadsForQuery = googleLeads;
-              }
+              leadsForQuery = (!insErr && insertedGeralLeads && insertedGeralLeads.length > 0)
+                ? insertedGeralLeads
+                : googleLeads;
 
-              // Update search_cache
               await (supabase.from("search_cache") as any)
                 .upsert({
                   keyword: cleanKeyword,
@@ -374,7 +401,7 @@ export async function POST(request: NextRequest) {
               console.log(`[GOOGLE] Nenhum resultado com telefone para "${cleanKeyword}" em "${cleanLoc}"`);
             }
           } else {
-            console.log(`[INFO] Google API não configurada. Sem resultados reais para "${cleanKeyword}" em "${cleanLoc}".`);
+            console.log(`[INFO] Sem resultados no banco e Google API não configurada para "${cleanKeyword}" em "${cleanLoc}".`);
           }
         }
 
