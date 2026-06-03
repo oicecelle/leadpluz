@@ -61,7 +61,7 @@ export default function Navbar() {
           href="https://go.leadpluz.com/cadastro"
           className="btn-gradient px-5 py-2 rounded-lg text-xs font-bold uppercase tracking-wider text-white"
         >
-          Começar grátis
+          Começar agora
         </Link>
       </div>
 
@@ -126,7 +126,7 @@ export default function Navbar() {
                 href="https://go.leadpluz.com/cadastro"
                 className="btn-gradient w-full py-3 rounded-lg text-xs font-bold uppercase tracking-wider text-white text-center"
               >
-                Começar grátis
+                Começar agora
               </Link>
             </div>
           </motion.div>
