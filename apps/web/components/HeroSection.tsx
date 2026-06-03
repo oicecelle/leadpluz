@@ -36,7 +36,7 @@ export default function HeroSection() {
           </h1>
 
           <p className="text-base md:text-lg text-gray-400 max-w-lg leading-relaxed">
-            LEADPLUZ busca leads qualificados, dispara mensagens no WhatsApp e gerencia todo o seu funil comercial em um só lugar.
+            Chega de garimpar cliente um por um. Na LEADPLUZ você encontra, aborda e organiza seus leads, tudo no mesmo lugar.
           </p>
 
           {/* KPI list */}

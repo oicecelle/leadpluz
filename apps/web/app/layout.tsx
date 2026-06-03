@@ -9,10 +9,10 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "LEADPLUZ — Encontre clientes. Conecte. Converta.",
+  title: "LEADPLUZ - Encontre clientes. Conecte. Converta.",
   description: "Plataforma de prospecção B2B com busca de leads, disparos no WhatsApp e CRM completo.",
   openGraph: {
-    title: "LEADPLUZ — Encontre clientes. Conecte. Converta.",
+    title: "LEADPLUZ - Encontre clientes. Conecte. Converta.",
     description: "Plataforma de prospecção B2B com busca de leads, disparos no WhatsApp e CRM completo.",
     type: "website",
     locale: "pt_BR",

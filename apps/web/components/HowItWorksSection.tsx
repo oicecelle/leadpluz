@@ -10,7 +10,7 @@ export default function HowItWorksSection() {
     {
       number: "01",
       title: "Busque",
-      desc: "Digite qualquer palavra-chave e cidade. Acesse uma base de leads qualificados já no primeiro segundo — com cache inteligente de resultados.",
+      desc: "Digite qualquer palavra-chave e cidade. Acesse uma base de leads qualificados já no primeiro segundo, com cache inteligente de resultados.",
       icon: Search,
       preview: (
         <div className="bg-[#0f0f1a] border border-purple-800/20 rounded-xl p-4 space-y-3 shadow-lg max-w-sm w-full font-sans text-left">

@@ -10,7 +10,7 @@ export default function FeaturesSection() {
   const features = [
     {
       title: "Busca Inteligente",
-      description: "Varredura por palavra-chave e localização com cache de 7 dias. Múltiplas palavras-chave e cidades em uma única busca.",
+      description: "Varredura por palavra-chave e localização com resultados instantâneos. Busque múltiplas palavras-chave e cidades em uma única pesquisa.",
       icon: Search
     },
     {
@@ -30,7 +30,7 @@ export default function FeaturesSection() {
     },
     {
       title: "Agendamento de Calls",
-      description: "Gerencie todas as reuniões com leads. Google Meet, Zoom, Teams — tudo centralizado com histórico.",
+      description: "Gerencie todas as reuniões com leads. Google Meet, Zoom, Teams, tudo centralizado com histórico.",
       icon: Calendar
     },
     {
@@ -99,7 +99,7 @@ export default function FeaturesSection() {
               <span className="text-[9px] bg-purple-900/50 border border-purple-500/30 text-purple-300 font-bold px-2 py-0.5 rounded-full">Padrão Enterprise</span>
             </h3>
             <p className="text-xs md:text-sm text-gray-400 leading-relaxed">
-              Sua base de clientes é o seu maior ativo. No LEADPLUZ, cada conta possui isolamento de banco de dados por Row Level Security (RLS) no Supabase. Seus leads, históricos de chat e dados de disparo são armazenados de forma isolada e acessíveis exclusivamente pela sua equipe. Proteção total contra vazamentos ou invasões.
+              Sua base de clientes é o seu maior ativo. Na LEADPLUZ, cada conta possui isolamento de banco de dados por Row Level Security (RLS). Seus leads, históricos de chat e dados de disparo são armazenados de forma isolada e acessíveis exclusivamente pela sua equipe. Proteção total contra vazamentos ou invasões.
             </p>
           </div>
         </motion.div>

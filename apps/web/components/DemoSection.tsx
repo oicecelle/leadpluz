@@ -50,7 +50,7 @@ export default function DemoSection() {
         >
           <SectionBadge text="Demonstração" />
           <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight text-white leading-tight">
-            Veja o <GradientText>LEADPLUZ</GradientText> em ação
+            Veja a <GradientText>LEADPLUZ</GradientText> em ação
           </h2>
           <p className="text-sm text-gray-400 leading-relaxed max-w-md">
             Experimente o poder de automatizar sua prospecção. Assista como nossa busca e sistema de disparo rodam em segundo plano de forma contínua e integrada.

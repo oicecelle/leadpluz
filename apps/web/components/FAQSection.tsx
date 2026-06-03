@@ -15,7 +15,7 @@ export default function FAQSection() {
     },
     {
       q: "Como funciona a busca de leads?",
-      a: "Você digita uma palavra-chave (ex: 'clínica odontológica') e uma cidade. O sistema consulta nossa base e o Google Maps, filtrando e retornando dados de contato válidos para a sua equipe comercial — contando com cache inteligente de resultados de 7 dias."
+      a: "Você digita uma palavra-chave (ex: \"clínica odontológica\") e uma cidade. O sistema consulta nossa base e o Google, filtrando e retornando apenas os leads com dados de contato válidos, prontos para sua abordagem comercial."
     },
     {
       q: "Posso usar meu próprio número de WhatsApp?",
@@ -23,7 +23,7 @@ export default function FAQSection() {
     },
     {
       q: "Qual a diferença entre API não oficial e API Oficial?",
-      a: "A API não oficial usa seu número pessoal do WhatsApp — mais simples, porém com risco de banimento se usado em excesso (recomendamos no máximo 50 disparos por dia). A API Oficial é homologada pela Meta, livre de riscos de banimento, disponível no plano Ultra."
+      a: "A API não oficial usa seu número pessoal do WhatsApp, sendo mais simples, porém com risco de banimento se usado em excesso (recomendamos no máximo 50 disparos por dia). A API Oficial é homologada pela Meta, livre de riscos de banimento, disponível no plano Ultra."
     },
     {
       q: "Os leads se renovam todo mês?",
@@ -35,7 +35,7 @@ export default function FAQSection() {
     },
     {
       q: "Meus dados ficam seguros?",
-      a: "Sim. Cada usuário tem seus dados completamente isolados e protegidos via Row Level Security (RLS) no Supabase. Os leads capturados e o histórico de disparos são exclusivos da sua conta."
+      a: "Sim. Cada usuário tem seus dados completamente isolados e protegidos via Row Level Security no banco de dados. Os leads capturados e o histórico de disparos são exclusivos da sua conta."
     },
     {
       q: "Posso cancelar a qualquer momento?",

@@ -20,7 +20,7 @@ export default function SocialProofBar() {
     <section className="bg-[#0a0a0f] border-y border-purple-950/20 py-8 overflow-hidden w-full select-none">
       <div className="max-w-7xl mx-auto px-6 mb-4 text-center">
         <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
-          Utilizado por empresas de todos os segmentos
+          Encontre empresas de todos os segmentos
         </span>
       </div>
 

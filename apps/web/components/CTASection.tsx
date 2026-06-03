@@ -28,7 +28,7 @@ export default function CTASection() {
         </h2>
 
         <p className="text-sm md:text-base text-gray-400 max-w-lg leading-relaxed mx-auto">
-          Junte-se a centenas de empresas que já usam o LEADPLUZ para prospectar com inteligência, automatizar contatos e fechar contratos.
+          Junte-se a centenas de empresas que já usam a LEADPLUZ para prospectar com inteligência, automatizar contatos e fechar contratos.
         </p>
 
         <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto pt-2">
@@ -40,7 +40,7 @@ export default function CTASection() {
             <ArrowRight className="w-4 h-4 text-[#050508]" />
           </Link>
           <Link
-            href="https://wa.me/5521976640033?text=Quero%20saber%20mais%20sobre%20o%20LeadPluz"
+            href="https://wa.me/5521976640033?text=Quero%20saber%20mais%20sobre%20a%20LeadPluz"
             target="_blank"
             className="w-full sm:w-auto px-8 py-4 border border-purple-800/40 rounded-xl text-xs font-bold uppercase tracking-widest text-white hover:bg-white/5 transition-all duration-200 text-center"
           >
