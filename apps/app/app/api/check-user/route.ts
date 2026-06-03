@@ -1,11 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://vgqwvycmxmlofwepstcd.supabase.co';
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+export const dynamic = "force-dynamic";
 
-// Create admin client to bypass RLS policies safely on the server side
-const adminClient = createClient(supabaseUrl, supabaseServiceKey || "");
+let adminClient: ReturnType<typeof createClient> | null = null;
+
+function getAdminClient() {
+  if (!adminClient) {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://vgqwvycmxmlofwepstcd.supabase.co';
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!supabaseServiceKey) {
+      throw new Error("SUPABASE_SERVICE_ROLE_KEY is required but not defined.");
+    }
+    adminClient = createClient(supabaseUrl, supabaseServiceKey);
+  }
+  return adminClient;
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,7 +27,7 @@ export async function POST(request: NextRequest) {
     const cleanedEmail = email.trim().toLowerCase();
 
     // Query profiles table for matching email
-    const { data, error } = await adminClient
+    const { data, error } = await getAdminClient()
       .from("profiles")
       .select("id")
       .eq("email", cleanedEmail)
