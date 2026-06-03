@@ -33,7 +33,7 @@ export default function CTASection() {
 
         <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto pt-2">
           <Link
-            href="https://go.leadpluz.com/cadastro"
+            href="#planos"
             className="w-full sm:w-auto px-10 py-4 bg-white text-[#050508] rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-gray-100 transition-all duration-200 shadow-xl flex items-center justify-center space-x-2"
           >
             <span>Criar minha conta agora</span>

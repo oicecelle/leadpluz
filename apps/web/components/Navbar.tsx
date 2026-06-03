@@ -52,13 +52,13 @@ export default function Navbar() {
       {/* Right: CTAs (Desktop) */}
       <div className="hidden md:flex items-center space-x-4">
         <Link
-          href="https://go.leadpluz.com/login"
+          href="https://app.leadpluz.com/login"
           className="px-5 py-2 border border-purple-800/40 rounded-lg text-xs font-bold uppercase tracking-wider text-white hover:bg-white/5 transition-all duration-200"
         >
           Login
         </Link>
         <Link
-          href="https://go.leadpluz.com/cadastro"
+          href="#planos"
           className="btn-gradient px-5 py-2 rounded-lg text-xs font-bold uppercase tracking-wider text-white"
         >
           Começar agora
@@ -117,13 +117,14 @@ export default function Navbar() {
 
             <div className="flex flex-col space-y-4 pt-2">
               <Link
-                href="https://go.leadpluz.com/login"
+                href="https://app.leadpluz.com/login"
                 className="w-full py-3 border border-purple-800/40 rounded-lg text-xs font-bold uppercase tracking-wider text-white hover:bg-white/5 transition-all duration-200"
               >
                 Login
               </Link>
               <Link
-                href="https://go.leadpluz.com/cadastro"
+                href="#planos"
+                onClick={() => setMenuOpen(false)}
                 className="btn-gradient w-full py-3 rounded-lg text-xs font-bold uppercase tracking-wider text-white text-center"
               >
                 Começar agora

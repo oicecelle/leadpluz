@@ -66,7 +66,7 @@ export default function HeroSection() {
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
             <Link
-              href="https://go.leadpluz.com/cadastro"
+              href="#planos"
               className="btn-gradient px-8 py-4 rounded-xl text-xs font-bold uppercase tracking-widest text-white text-center flex items-center justify-center space-x-2"
             >
               <span>Começar agora</span>

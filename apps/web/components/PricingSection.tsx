@@ -70,7 +70,7 @@ export default function PricingSection() {
             badge="Para começar"
             features={starterFeatures}
             ctaText="Começar com Starter"
-            ctaLink="https://go.leadpluz.com/cadastro?plano=starter"
+            ctaLink="https://checkout.ticto.app/OB52C3D66"
             orderClass="order-2 lg:order-none"
           />
 
@@ -82,7 +82,7 @@ export default function PricingSection() {
             badge="✦ Mais Popular"
             features={proFeatures}
             ctaText="Começar com Pro"
-            ctaLink="https://go.leadpluz.com/cadastro?plano=pro"
+            ctaLink="https://checkout.ticto.app/O8CFC5574"
             popular={true}
             orderClass="order-1 lg:order-none"
           />
@@ -94,7 +94,7 @@ export default function PricingSection() {
             badge="Para escalar"
             features={ultraFeatures}
             ctaText="Começar com Ultra"
-            ctaLink="https://go.leadpluz.com/cadastro?plano=ultra"
+            ctaLink="https://checkout.ticto.app/O3BE3401E"
             orderClass="order-3 lg:order-none"
           />
         </motion.div>

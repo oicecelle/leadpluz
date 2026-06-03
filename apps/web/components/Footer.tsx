@@ -67,11 +67,6 @@ export default function Footer() {
             </li>
             <li>
               <Link href="#" className="hover:text-purple-300 transition-colors">
-                Central de ajuda
-              </Link>
-            </li>
-            <li>
-              <Link href="#" className="hover:text-purple-300 transition-colors">
                 Status do serviço
               </Link>
             </li>
@@ -83,12 +78,12 @@ export default function Footer() {
           <h4 className="text-[10px] font-extrabold text-white uppercase tracking-widest">Legal</h4>
           <ul className="space-y-2 text-xs text-gray-500">
             <li>
-              <Link href="#" className="hover:text-purple-300 transition-colors">
+              <Link href="/termos" className="hover:text-purple-300 transition-colors">
                 Termos de uso
               </Link>
             </li>
             <li>
-              <Link href="#" className="hover:text-purple-300 transition-colors">
+              <Link href="/privacidade" className="hover:text-purple-300 transition-colors">
                 Política de privacidade
               </Link>
             </li>
