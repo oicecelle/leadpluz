@@ -28,10 +28,11 @@ export default function CRMPage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Filters
+  // Filters and Sorting
   const [statusFilter, setStatusFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [sourceFilter, setSourceFilter] = useState("all");
+  const [sortBy, setSortBy] = useState<"newest" | "oldest">("newest");
 
   // Selected leads for batch actions
   const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
@@ -41,9 +42,9 @@ export default function CRMPage() {
   const [editingLead, setEditingLead] = useState<any>(null);
   const [modalLoading, setModalLoading] = useState(false);
 
-  // Available categories & sources in results for filters
-  const [categories, setCategories] = useState<string[]>([]);
-  const [sources, setSources] = useState<string[]>([]);
+  // Derived categories & sources dynamically based on current leads in user's list
+  const categories = Array.from(new Set(leads.map((l: any) => l.category).filter(Boolean))) as string[];
+  const sources = Array.from(new Set(leads.map((l: any) => l.source_type).filter(Boolean))) as string[];
 
   // Excel Import state
   const [showImportModal, setShowImportModal] = useState(false);
@@ -66,11 +67,6 @@ export default function CRMPage() {
 
           if (!error && userLeads) {
             setLeads(userLeads);
-            
-            const cats = Array.from(new Set(userLeads.map((l: any) => l.category).filter(Boolean)));
-            const srcs = Array.from(new Set(userLeads.map((l: any) => l.source_type).filter(Boolean)));
-            setCategories(cats as string[]);
-            setSources(srcs as string[]);
           }
         }
       }
@@ -406,6 +402,12 @@ export default function CRMPage() {
     return matchesSearch && matchesStatus && matchesCategory && matchesSource;
   });
 
+  const sortedLeads = [...filteredLeads].sort((a, b) => {
+    const dateA = new Date(a.created_at || 0).getTime();
+    const dateB = new Date(b.created_at || 0).getTime();
+    return sortBy === "newest" ? dateB - dateA : dateA - dateB;
+  });
+
   return (
     <DashboardLayout>
       <div className="space-y-6 select-none">
@@ -435,8 +437,9 @@ export default function CRMPage() {
         </div>
 
         {/* Toolbar & Filters */}
-        <div className="card p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <div className="flex flex-1 items-center flex-wrap gap-2.5">
+        <div className="card p-4 flex flex-col gap-4">
+          {/* Top row: Search and Actions */}
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <div className="relative flex-1 min-w-[200px] max-w-sm">
               <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-500" />
               <input
@@ -448,26 +451,57 @@ export default function CRMPage() {
               />
             </div>
 
-            <span className="text-[10px] text-purple-300 font-bold whitespace-nowrap bg-[rgba(139,69,212,0.06)] border border-[rgba(139,69,212,0.15)] px-2.5 py-1 rounded-lg">
-              {filteredLeads.length} de {leads.length} filtrados
-            </span>
-
-            {/* Filters Selects */}
-            <div className="flex space-x-2 flex-wrap gap-y-2">
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="input h-8 py-0 px-2 text-[11px] w-[115px] font-medium cursor-pointer"
+            {/* Action buttons */}
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={() => {
+                  setEditingLead(null);
+                  setShowEditModal(true);
+                }}
+                className="btn-primary flex items-center space-x-2 text-xs py-2 uppercase font-bold tracking-wider cursor-pointer"
               >
-                <option value="all">Status</option>
-                <option value="new">Novo</option>
-                <option value="contacted">Contatado</option>
-                <option value="proposal_sent">Proposta</option>
-                <option value="converted">Convertido</option>
-                <option value="no_interest">Sem interesse</option>
-              </select>
+                <Plus className="w-4 h-4" />
+                <span>Novo Lead</span>
+              </button>
+              <button
+                onClick={() => setShowImportModal(true)}
+                className="btn-secondary flex items-center space-x-2 text-xs py-2 uppercase font-bold tracking-wider cursor-pointer"
+              >
+                <FileUp className="w-4 h-4" />
+                <span>Importar Excel</span>
+              </button>
+              <button
+                onClick={handleExport}
+                className="btn-secondary flex items-center space-x-2 text-xs py-2 uppercase font-bold tracking-wider cursor-pointer"
+              >
+                <FileDown className="w-4 h-4" />
+                <span>Exportar Excel</span>
+              </button>
+            </div>
+          </div>
 
-              {categories.length > 0 && (
+          {/* Bottom row: Filters & Sorting (below search) */}
+          <div className="flex flex-wrap items-center justify-between gap-4 pt-2 border-t border-[rgba(255,255,255,0.04)]">
+            <div className="flex items-center flex-wrap gap-2.5">
+              <span className="text-[10px] text-purple-300 font-bold whitespace-nowrap bg-[rgba(139,69,212,0.06)] border border-[rgba(139,69,212,0.15)] px-2.5 py-1 rounded-lg">
+                {filteredLeads.length} de {leads.length} filtrados
+              </span>
+
+              {/* Filters Selects */}
+              <div className="flex space-x-2 flex-wrap gap-y-2">
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="input h-8 py-0 px-2 text-[11px] w-[115px] font-medium cursor-pointer"
+                >
+                  <option value="all">Status</option>
+                  <option value="new">Novo</option>
+                  <option value="contacted">Contatado</option>
+                  <option value="proposal_sent">Proposta</option>
+                  <option value="converted">Convertido</option>
+                  <option value="no_interest">Sem interesse</option>
+                </select>
+
                 <select
                   value={categoryFilter}
                   onChange={(e) => setCategoryFilter(e.target.value)}
@@ -480,36 +514,21 @@ export default function CRMPage() {
                     </option>
                   ))}
                 </select>
-              )}
+              </div>
             </div>
-          </div>
 
-          {/* Action buttons */}
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              onClick={() => {
-                setEditingLead(null);
-                setShowEditModal(true);
-              }}
-              className="btn-primary flex items-center space-x-2 text-xs py-2 uppercase font-bold tracking-wider cursor-pointer"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Novo Lead</span>
-            </button>
-            <button
-              onClick={() => setShowImportModal(true)}
-              className="btn-secondary flex items-center space-x-2 text-xs py-2 uppercase font-bold tracking-wider cursor-pointer"
-            >
-              <FileUp className="w-4 h-4" />
-              <span>Importar Excel</span>
-            </button>
-            <button
-              onClick={handleExport}
-              className="btn-secondary flex items-center space-x-2 text-xs py-2 uppercase font-bold tracking-wider cursor-pointer"
-            >
-              <FileDown className="w-4 h-4" />
-              <span>Exportar Excel</span>
-            </button>
+            {/* Sorting */}
+            <div className="flex items-center space-x-2">
+              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Ordenar:</span>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as any)}
+                className="input h-8 py-0 px-2 text-[11px] w-[125px] font-medium cursor-pointer"
+              >
+                <option value="newest">Mais recentes</option>
+                <option value="oldest">Mais antigos</option>
+              </select>
+            </div>
           </div>
         </div>
 
@@ -570,12 +589,12 @@ export default function CRMPage() {
                 </tr>
               </thead>
               <tbody>
-                {filteredLeads.length > 0 ? (
-                  filteredLeads.map((lead) => (
+                {sortedLeads.length > 0 ? (
+                  sortedLeads.map((lead) => (
                     <tr key={lead.id} className={`hover:bg-[rgba(139,69,212,0.04)] transition-colors ${selectedLeads.includes(lead.id) ? "bg-[rgba(139,69,212,0.02)]" : ""}`}>
                       <td>
                         <div 
-                          onClick={() => handleSelectLead(lead.id)}
+                           onClick={() => handleSelectLead(lead.id)}
                           className="w-4 h-4 rounded border flex items-center justify-center transition-all cursor-pointer border-[rgba(139,69,212,0.3)] bg-transparent hover:border-[#8b45d4]"
                         >
                           {selectedLeads.includes(lead.id) && (
@@ -583,8 +602,8 @@ export default function CRMPage() {
                           )}
                         </div>
                       </td>
-                      <td className="font-semibold text-white">{lead.name}</td>
-                      <td>
+                      <td className="font-semibold text-white break-words max-w-[200px]">{lead.name}</td>
+                      <td className="whitespace-nowrap">
                         <div className="flex flex-col text-xs space-y-0.5">
                           {lead.phone && (
                             <a href={`tel:${lead.phone}`} className="hover:underline hover:text-[#a855f7] font-mono text-white font-medium">

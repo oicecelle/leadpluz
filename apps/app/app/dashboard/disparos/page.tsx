@@ -99,11 +99,11 @@ export default function DisparosPage() {
             })
             .eq("id", userId);
           return "connected";
-        } else {
-          // Instância existe mas não está conectada. Vamos pegar o QR Code se estiver disponível
+        } else if (status === "connecting") {
+          // Keep connecting status
+          setInstanceStatus("connecting");
           const qrcode = data.instance?.qrcode || data.instance?.qr || data.qrcode || "";
           if (qrcode) {
-            setInstanceStatus("connecting");
             const formattedQr = qrcode.startsWith("data:image") ? qrcode : `data:image/png;base64,${qrcode}`;
             setQrCodeUrl(formattedQr);
             await (supabase.from("profiles") as any)
@@ -112,19 +112,21 @@ export default function DisparosPage() {
                 uazapi_qr_code: formattedQr
               })
               .eq("id", userId);
-            return "connecting";
-          } else {
-            setInstanceStatus("disconnected");
-            setQrCodeUrl(null);
-            await (supabase.from("profiles") as any)
-              .update({
-                uazapi_instance_status: "disconnected",
-                uazapi_instance_id: null,
-                uazapi_qr_code: null
-              })
-              .eq("id", userId);
-            return "disconnected";
           }
+          return "connecting";
+        } else {
+          // Real disconnected status
+          setInstanceStatus("disconnected");
+          setQrCodeUrl(null);
+          setIsPolling(false);
+          await (supabase.from("profiles") as any)
+            .update({
+              uazapi_instance_status: "disconnected",
+              uazapi_instance_id: null,
+              uazapi_qr_code: null
+            })
+            .eq("id", userId);
+          return "disconnected";
         }
       } else {
         // Credenciais inválidas ou erro
@@ -174,6 +176,14 @@ export default function DisparosPage() {
           }
 
           setProfile(prof);
+
+          // Load existing QR Code and Status from profile
+          if (prof.uazapi_qr_code) {
+            setQrCodeUrl(prof.uazapi_qr_code);
+          }
+          if (prof.uazapi_instance_status) {
+            setInstanceStatus(prof.uazapi_instance_status);
+          }
           
           // Verificar status real imediatamente
           const status = await checkRealStatus(currentToken, currentBaseUrl, session.user.id);
@@ -404,6 +414,18 @@ export default function DisparosPage() {
       });
 
       if (res.status === 200) {
+        const data = await res.json();
+        const qrcode = data.instance?.qrcode || data.instance?.qr || data.qrcode || "";
+        if (qrcode) {
+          const formattedQr = qrcode.startsWith("data:image") ? qrcode : `data:image/png;base64,${qrcode}`;
+          setQrCodeUrl(formattedQr);
+          await (supabase.from("profiles") as any)
+            .update({
+              uazapi_instance_status: "connecting",
+              uazapi_qr_code: formattedQr
+            })
+            .eq("id", profile.id);
+        }
         // Começar polling para pegar o status / QR Code
         setIsPolling(true);
       } else {

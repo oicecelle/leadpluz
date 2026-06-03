@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@repo/supabase";
 import { useRouter } from "next/navigation";
-import { Check, Zap, ArrowRight } from "lucide-react";
+import { Check, Zap, ArrowRight, Eye, EyeOff } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -14,6 +14,16 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
+
+  useEffect(() => {
+    const savedEmail = localStorage.getItem("remembered_email");
+    if (savedEmail) {
+      setEmail(savedEmail);
+      setRememberMe(true);
+    }
+  }, []);
 
   useEffect(() => {
     const checkSession = async () => {
@@ -36,6 +46,18 @@ export default function LoginPage() {
         if (!name.trim()) {
           throw new Error("Por favor, preencha o seu nome.");
         }
+
+        // Check if user already exists in DB
+        const checkRes = await fetch("/api/check-user", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email }),
+        });
+        const checkData = await checkRes.json();
+        if (checkData.exists) {
+          throw new Error("Este e-mail já está cadastrado.");
+        }
+
         const { data, error: signUpError } = await supabase.auth.signUp({
           email,
           password,
@@ -56,6 +78,13 @@ export default function LoginPage() {
         if (signInError) throw signInError;
 
         if (data.session) {
+          // Save or clear email in localStorage
+          if (rememberMe) {
+            localStorage.setItem("remembered_email", email);
+          } else {
+            localStorage.removeItem("remembered_email");
+          }
+
           document.cookie = `sb-access-token=${data.session.access_token}; path=/; max-age=86400; SameSite=Lax`;
 
           const { data: profile, error: profileError } = await (supabase.from("profiles") as any)
@@ -193,17 +222,42 @@ export default function LoginPage() {
               <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
                 Senha
               </label>
-              <input
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className={`input ${
-                  error ? "border-[#f87171]" : password.trim() ? "border-[#6b2fb5]" : "border-[rgba(255,255,255,0.06)]"
-                }`}
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className={`input pr-10 w-full ${
+                    error ? "border-[#f87171]" : password.trim() ? "border-[#6b2fb5]" : "border-[rgba(255,255,255,0.06)]"
+                  }`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors cursor-pointer"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
             </div>
+
+            {!isSignUp && (
+              <div 
+                onClick={() => setRememberMe(!rememberMe)}
+                className="flex items-center space-x-2.5 cursor-pointer group pt-1"
+              >
+                <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${
+                  rememberMe 
+                    ? "bg-gradient-to-br from-[#6b2fb5] to-[#a855f7] border-transparent" 
+                    : "border-[rgba(139,69,212,0.3)] bg-transparent group-hover:border-[#8b45d4]"
+                }`}>
+                  {rememberMe && <Check className="w-3 h-3 text-white stroke-[3px]" />}
+                </div>
+                <span className="text-xs text-gray-300 font-medium select-none">Lembrar de mim</span>
+              </div>
+            )}
 
             {error && (
               <div className="text-xs text-[#f87171] bg-red-950/20 border border-[#f87171]/20 rounded px-3 py-2 animate-in fade-in duration-200">

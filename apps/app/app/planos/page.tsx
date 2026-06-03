@@ -25,6 +25,14 @@ export default function PlanosPage() {
 
       if (prof) {
         setProfile(prof);
+
+        // Update cookies for middleware to avoid redirect loops
+        const planStatus = prof.plan_status || "inactive";
+        const isAdmin = prof.is_admin ? "true" : "false";
+        document.cookie = `sb-access-token=${session.access_token}; path=/; max-age=86400; SameSite=Lax`;
+        document.cookie = `plan-status=${planStatus}; path=/; max-age=86400; SameSite=Lax`;
+        document.cookie = `is-admin=${isAdmin}; path=/; max-age=86400; SameSite=Lax`;
+
         // If already active, send back to dashboard
         if (prof.plan_status === "active" || prof.plan_status === "trial") {
           router.push("/dashboard/leads");

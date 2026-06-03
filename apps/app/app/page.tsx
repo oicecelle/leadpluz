@@ -9,8 +9,23 @@ export default function RootPage() {
 
   useEffect(() => {
     const handleRedirect = async () => {
-      const { data } = await supabase.auth.getSession();
-      if (data.session) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        try {
+          const { data: profile } = await (supabase.from("profiles") as any)
+            .select("plan_status, is_admin")
+            .eq("id", session.user.id)
+            .maybeSingle();
+            
+          const planStatus = profile?.plan_status || "inactive";
+          const isAdmin = profile?.is_admin ? "true" : "false";
+          
+          document.cookie = `sb-access-token=${session.access_token}; path=/; max-age=86400; SameSite=Lax`;
+          document.cookie = `plan-status=${planStatus}; path=/; max-age=86400; SameSite=Lax`;
+          document.cookie = `is-admin=${isAdmin}; path=/; max-age=86400; SameSite=Lax`;
+        } catch (err) {
+          console.error("Erro ao sincronizar cookies na raiz:", err);
+        }
         // Logged in, send to dashboard
         router.push("/dashboard/leads");
       } else {

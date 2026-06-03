@@ -66,6 +66,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           if (impProf) {
             setProfile(impProf);
             setIsImpersonating(true);
+            
+            // Sync cookies for the impersonated user so middleware behaves correctly
+            const planStatus = impProf.plan_status || "inactive";
+            const isAdmin = impProf.is_admin ? "true" : "false";
+            document.cookie = `sb-access-token=${session.access_token}; path=/; max-age=86400; SameSite=Lax`;
+            document.cookie = `plan-status=${planStatus}; path=/; max-age=86400; SameSite=Lax`;
+            document.cookie = `is-admin=${isAdmin}; path=/; max-age=86400; SameSite=Lax`;
+
             setLoading(false);
             return;
           }
@@ -74,6 +82,13 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
       setProfile(actualProf);
       setIsImpersonating(false);
+
+      // Keep cookies in sync and fresh for the active user session
+      const planStatus = actualProf.plan_status || "inactive";
+      const isAdmin = actualProf.is_admin ? "true" : "false";
+      document.cookie = `sb-access-token=${session.access_token}; path=/; max-age=86400; SameSite=Lax`;
+      document.cookie = `plan-status=${planStatus}; path=/; max-age=86400; SameSite=Lax`;
+      document.cookie = `is-admin=${isAdmin}; path=/; max-age=86400; SameSite=Lax`;
     }
     setLoading(false);
   };
