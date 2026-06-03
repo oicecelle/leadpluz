@@ -22,7 +22,7 @@ interface Step {
   id: string;
   type: "message" | "trigger" | "wait";
   messageText: string;
-  messageType: "text" | "image" | "file";
+  messageType: "text" | "image" | "file" | "audio";
   mediaUrl: string;
   triggerKeyword: string;
   triggerType: "exact" | "contains" | "context";
@@ -76,6 +76,63 @@ export default function DisparosPage() {
   const [chatwootUrl, setChatwootUrl] = useState("");
   const [inboxes, setInboxes] = useState<string[]>([]);
   const [selectedInbox, setSelectedInbox] = useState("");
+
+  // Expanding/Collapsing steps state
+  const [collapsedSteps, setCollapsedSteps] = useState<Record<string, boolean>>({});
+  const [uploadingStepId, setUploadingStepId] = useState<string | null>(null);
+
+  const toggleStepCollapse = (stepId: string) => {
+    setCollapsedSteps(prev => ({
+      ...prev,
+      [stepId]: !prev[stepId]
+    }));
+  };
+
+  const expandAllSteps = () => {
+    setCollapsedSteps({});
+  };
+
+  const collapseAllSteps = () => {
+    const allCollapsed = steps.reduce((acc, step) => {
+      acc[step.id] = true;
+      return acc;
+    }, {} as Record<string, boolean>);
+    setCollapsedSteps(allCollapsed);
+  };
+
+  const handleFileUpload = async (stepId: string, file: File, idx: number) => {
+    setUploadingStepId(stepId);
+    try {
+      const fileExt = file.name.split(".").pop();
+      const fileName = `${profile?.id || "anonymous"}/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+      const filePath = `media/${fileName}`;
+
+      const { data, error } = await supabase.storage
+        .from("media")
+        .upload(filePath, file, {
+          cacheControl: "3600",
+          upsert: true
+        });
+
+      if (error) throw error;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from("media")
+        .getPublicUrl(filePath);
+
+      const updated = [...steps];
+      const s = updated[idx];
+      if (s) {
+        s.mediaUrl = publicUrl;
+        setSteps(updated);
+      }
+      alert("Arquivo enviado com sucesso!");
+    } catch (err: any) {
+      alert("Erro ao fazer upload: " + err.message);
+    } finally {
+      setUploadingStepId(null);
+    }
+  };
 
   const checkRealStatus = async (token: string, baseUrl: string, userId: string) => {
     try {
@@ -233,8 +290,14 @@ export default function DisparosPage() {
         .select("category")
         .eq("user_id", profile.id);
       if (leadsData) {
-        const unique = Array.from(new Set(leadsData.map((x: any) => x.category).filter(Boolean)));
-        setCategories(unique as string[]);
+        const unique = Array.from(new Set(
+          leadsData.map((x: any) => {
+            const cat = x.category?.trim();
+            if (!cat) return null;
+            return cat.split(' ').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+          }).filter(Boolean)
+        )).sort() as string[];
+        setCategories(unique);
       }
 
       const { data: flowsData } = await (supabase.from("dispatch_flows") as any)
@@ -385,7 +448,7 @@ export default function DisparosPage() {
         query = query.eq("status", filterStatus);
       }
       if (filterCategory !== "all") {
-        query = query.eq("category", filterCategory);
+        query = query.ilike("category", filterCategory);
       }
 
       const { count } = await query;
@@ -535,7 +598,7 @@ export default function DisparosPage() {
         query = query.eq("status", filterStatus);
       }
       if (filterCategory !== "all") {
-        query = query.eq("category", filterCategory);
+        query = query.ilike("category", filterCategory);
       }
       const limitVal = parseInt(limitCount);
       if (!isNaN(limitVal)) {
@@ -767,14 +830,30 @@ export default function DisparosPage() {
                   </div>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={handleAddStep}
-                  className="btn-secondary flex items-center space-x-2 text-xs uppercase font-bold py-2 px-3.5 cursor-pointer self-end"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Adicionar Etapa</span>
-                </button>
+                <div className="flex flex-wrap items-center gap-2 self-end">
+                  <button
+                    type="button"
+                    onClick={expandAllSteps}
+                    className="btn-secondary text-[10px] uppercase font-bold py-2 px-2.5 cursor-pointer"
+                  >
+                    Expandir Todas
+                  </button>
+                  <button
+                    type="button"
+                    onClick={collapseAllSteps}
+                    className="btn-secondary text-[10px] uppercase font-bold py-2 px-2.5 cursor-pointer"
+                  >
+                    Recolher Todas
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleAddStep}
+                    className="btn-secondary flex items-center space-x-1.5 text-[10px] uppercase font-bold py-2 px-3 cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Adicionar Etapa</span>
+                  </button>
+                </div>
               </div>
 
               {/* Vertical connected steps timeline */}
@@ -790,115 +869,245 @@ export default function DisparosPage() {
                       {idx + 1}
                     </div>
 
-                    <div className="flex justify-between items-center">
-                      <span className="badge badge-purple text-[9px] font-bold uppercase tracking-wider">
-                        {step.type === "message" ? "Mensagem Inicial" : `Gatilho de Resposta`}
-                      </span>
-                      {idx > 0 && (
+                    <div className="flex justify-between items-center cursor-pointer select-none" onClick={() => toggleStepCollapse(step.id)}>
+                      <div className="flex items-center space-x-2">
+                        <span className="badge badge-purple text-[9px] font-bold uppercase tracking-wider">
+                          {step.type === "message" ? "Mensagem Inicial" : `Gatilho de Resposta`}
+                        </span>
+                        <span className="text-[10px] text-gray-500 font-medium">
+                          {collapsedSteps[step.id] ? "(Recolhida — clique para expandir)" : "(clique para recolher)"}
+                        </span>
+                      </div>
+                      
+                      <div className="flex items-center space-x-3" onClick={(e) => e.stopPropagation()}>
+                        {idx > 0 && (
+                          <button
+                            onClick={() => handleRemoveStep(step.id)}
+                            className="text-red-400 hover:text-red-300 text-xs font-semibold cursor-pointer"
+                          >
+                            Remover Etapa
+                          </button>
+                        )}
                         <button
-                          onClick={() => handleRemoveStep(step.id)}
-                          className="text-red-400 hover:text-red-300 text-xs font-semibold cursor-pointer"
+                          type="button"
+                          onClick={() => toggleStepCollapse(step.id)}
+                          className="text-gray-400 hover:text-white transition-colors"
                         >
-                          Remover Etapa
+                          {collapsedSteps[step.id] ? (
+                            <ChevronRight className="w-4 h-4 transform rotate-90" />
+                          ) : (
+                            <ChevronRight className="w-4 h-4 transform -rotate-90" />
+                          )}
                         </button>
-                      )}
+                      </div>
                     </div>
 
-                    {step.type === "trigger" && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="flex flex-col space-y-1">
-                          <label className="text-[10px] font-bold text-gray-500 uppercase">
-                            Validação do Gatilho
-                          </label>
-                          <select
-                            value={step.triggerType || "contains"}
-                            onChange={(e) => {
-                              const updated = [...steps];
-                              const s = updated[idx];
-                              if (s) {
-                                s.triggerType = e.target.value as any;
-                                setSteps(updated);
-                              }
-                            }}
-                            className="input text-xs cursor-pointer"
-                          >
-                            <option value="contains">Se Contém a palavra</option>
-                            <option value="exact">Palavra Exata</option>
-                            <option value="context">Pelo Contexto (Inteligência Artificial)</option>
-                          </select>
-                        </div>
+                    {!collapsedSteps[step.id] && (
+                      <>
+                        {step.type === "trigger" && (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="flex flex-col space-y-1">
+                              <label className="text-[10px] font-bold text-gray-500 uppercase">
+                                Validação do Gatilho
+                              </label>
+                              <select
+                                value={step.triggerType || "contains"}
+                                onChange={(e) => {
+                                  const updated = [...steps];
+                                  const s = updated[idx];
+                                  if (s) {
+                                    s.triggerType = e.target.value as any;
+                                    setSteps(updated);
+                                  }
+                                }}
+                                className="input text-xs cursor-pointer"
+                              >
+                                <option value="contains">Se Contém a palavra</option>
+                                <option value="exact">Palavra Exata</option>
+                                <option value="context">Pelo Contexto (Inteligência Artificial)</option>
+                              </select>
+                            </div>
 
-                        <div className="flex flex-col space-y-1">
-                          <label className="text-[10px] font-bold text-gray-500 uppercase">
-                            {step.triggerType === "context" ? "Intenção/Contexto Esperado" : "Palavra-Chave / Gatilho"}
-                          </label>
-                          <input
-                            type="text"
-                            placeholder={step.triggerType === "context" ? "Ex: Demonstrou interesse, Tirar dúvida..." : "Quero saber mais, preço, info"}
-                            value={step.triggerKeyword}
+                            <div className="flex flex-col space-y-1">
+                              <label className="text-[10px] font-bold text-gray-500 uppercase">
+                                {step.triggerType === "context" ? "Intenção/Contexto Esperado" : "Palavra-Chave / Gatilho"}
+                              </label>
+                              <input
+                                type="text"
+                                placeholder={step.triggerType === "context" ? "Ex: Demonstrou interesse, Tirar dúvida..." : "Quero saber mais, preço, info"}
+                                value={step.triggerKeyword}
+                                onChange={(e) => {
+                                  const updated = [...steps];
+                                  const s = updated[idx];
+                                  if (s) {
+                                    s.triggerKeyword = e.target.value;
+                                    setSteps(updated);
+                                  }
+                                }}
+                                className="input text-xs"
+                              />
+                            </div>
+
+                            {step.triggerType === "context" && (
+                              <div className="md:col-span-2 text-[10px] text-[#fbbf24] bg-yellow-950/10 border border-yellow-500/20 p-3 rounded-lg leading-relaxed flex items-center space-x-2">
+                                <AlertTriangle className="w-4 h-4 flex-shrink-0 text-[#fbbf24]" />
+                                <span>A IA analisará a intenção da resposta. <strong>Nota: a IA pode cometer erros de interpretação.</strong></span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        <div className="flex flex-col space-y-1.5">
+                          <label className="text-[10px] font-bold text-gray-500 uppercase">Texto da Mensagem</label>
+                          <textarea
+                            rows={3}
+                            value={step.messageText}
                             onChange={(e) => {
                               const updated = [...steps];
                               const s = updated[idx];
                               if (s) {
-                                s.triggerKeyword = e.target.value;
+                                s.messageText = e.target.value;
                                 setSteps(updated);
                               }
                             }}
                             className="input text-xs"
-                          />
+                          ></textarea>
                         </div>
 
-                        {step.triggerType === "context" && (
-                          <div className="md:col-span-2 text-[10px] text-[#fbbf24] bg-yellow-950/10 border border-yellow-500/20 p-3 rounded-lg leading-relaxed flex items-center space-x-2">
-                            <AlertTriangle className="w-4 h-4 flex-shrink-0 text-[#fbbf24]" />
-                            <span>A IA analisará a intenção da resposta. <strong>Nota: a IA pode cometer erros de interpretação.</strong></span>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="flex flex-col space-y-1">
+                            <label className="text-[10px] font-bold text-gray-500 uppercase">
+                              Tipo de Mensagem
+                            </label>
+                            <select
+                              value={step.messageType || "text"}
+                              onChange={(e) => {
+                                const updated = [...steps];
+                                const s = updated[idx];
+                                if (s) {
+                                  s.messageType = e.target.value as any;
+                                  if (e.target.value === "text") {
+                                    s.mediaUrl = "";
+                                  }
+                                  setSteps(updated);
+                                }
+                              }}
+                              className="input text-xs cursor-pointer"
+                            >
+                              <option value="text">Texto</option>
+                              <option value="image">Imagem</option>
+                              <option value="audio">Áudio</option>
+                              <option value="file">Documento / PDF</option>
+                            </select>
+                          </div>
+
+                          <div className="flex flex-col space-y-1">
+                            <label className="text-[10px] font-bold text-gray-500 uppercase">
+                              Alterar status do lead para após envio
+                            </label>
+                            <select
+                              value={step.statusAfterSend}
+                              onChange={(e) => {
+                                const updated = [...steps];
+                                const s = updated[idx];
+                                if (s) {
+                                  s.statusAfterSend = e.target.value;
+                                  setSteps(updated);
+                                }
+                              }}
+                              className="input text-xs cursor-pointer"
+                            >
+                              <option value="new">Novo</option>
+                              <option value="contacted">Contatado</option>
+                              <option value="proposal_sent">Proposta Enviada</option>
+                              <option value="converted">Convertido</option>
+                              <option value="no_interest">Sem interesse</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        {step.messageType !== "text" && (
+                          <div className="p-4 bg-[#0a0a0f] border border-[rgba(139,69,212,0.12)] rounded-xl space-y-3">
+                            <label className="text-[10px] font-bold text-gray-500 uppercase block">
+                              Upload do Arquivo ({step.messageType === "image" ? "Imagem" : step.messageType === "audio" ? "Áudio" : "Documento/PDF"})
+                            </label>
+                            
+                            <div className="flex items-center space-x-3">
+                              <input
+                                type="file"
+                                accept={
+                                  step.messageType === "image"
+                                    ? "image/*"
+                                    : step.messageType === "audio"
+                                      ? "audio/*"
+                                      : ".pdf,.doc,.docx,.xls,.xlsx,.txt"
+                                }
+                                onChange={(e) => {
+                                  const files = e.target.files;
+                                  const file = files?.[0];
+                                  if (file) {
+                                    handleFileUpload(step.id, file, idx);
+                                  }
+                                }}
+                                className="text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-purple-950 file:text-purple-300 hover:file:bg-purple-900 cursor-pointer"
+                              />
+                              {uploadingStepId === step.id && (
+                                <span className="text-xs text-purple-400 animate-pulse">Enviando arquivo...</span>
+                              )}
+                            </div>
+
+                            {step.mediaUrl && (
+                              <div className="text-xs space-y-1 pt-1">
+                                <span className="text-gray-500 font-medium">Link do arquivo:</span>
+                                <div className="flex items-center space-x-2">
+                                  <a
+                                    href={step.mediaUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-purple-400 hover:underline font-medium break-all"
+                                  >
+                                    {step.mediaUrl}
+                                  </a>
+                                </div>
+                                
+                                {step.messageType === "image" && (
+                                  <img
+                                    src={step.mediaUrl}
+                                    alt="Preview"
+                                    className="max-w-[200px] max-h-[150px] rounded-lg border border-[rgba(139,69,212,0.15)] mt-2"
+                                  />
+                                )}
+                                {step.messageType === "audio" && (
+                                  <audio controls src={step.mediaUrl} className="max-w-full mt-2" />
+                                )}
+                              </div>
+                            )}
                           </div>
                         )}
-                      </div>
+                      </>
                     )}
-
-                    <div className="flex flex-col space-y-1.5">
-                      <label className="text-[10px] font-bold text-gray-500 uppercase">Texto da Mensagem</label>
-                      <textarea
-                        rows={3}
-                        value={step.messageText}
-                        onChange={(e) => {
-                          const updated = [...steps];
-                          const s = updated[idx];
-                          if (s) {
-                            s.messageText = e.target.value;
-                            setSteps(updated);
-                          }
-                        }}
-                        className="input text-xs"
-                      ></textarea>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="flex flex-col space-y-1">
-                        <label className="text-[10px] font-bold text-gray-500 uppercase">
-                          Alterar status do lead para
-                        </label>
-                        <select
-                          value={step.statusAfterSend}
-                          onChange={(e) => {
-                            const updated = [...steps];
-                            const s = updated[idx];
-                            if (s) {
-                              s.statusAfterSend = e.target.value;
-                              setSteps(updated);
-                            }
-                          }}
-                          className="input text-xs cursor-pointer"
-                        >
-                          <option value="new">Novo</option>
-                          <option value="contacted">Contatado</option>
-                          <option value="proposal_sent">Proposta Enviada</option>
-                        </select>
-                      </div>
-                    </div>
                   </div>
                 ))}
+              </div>
+
+              {/* Bottom timeline controls */}
+              <div className="flex justify-end items-center gap-3 pt-4 border-t border-[rgba(139,69,212,0.12)] mt-4">
+                <button
+                  type="button"
+                  onClick={handleAddStep}
+                  className="btn-secondary flex items-center space-x-2 text-xs uppercase font-bold py-2 px-3.5 cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Adicionar Etapa</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveFlow}
+                  disabled={savingFlow}
+                  className="btn-primary flex items-center space-x-2 text-xs uppercase font-bold py-2 px-4 cursor-pointer shadow-glow-sm"
+                >
+                  <span>{savingFlow ? "Salvando..." : "Salvar Fluxo"}</span>
+                </button>
               </div>
 
               {/* Bottom trigger settings and warn */}

@@ -22,8 +22,33 @@ import {
 import { Plus, X, Phone, MapPin, Tag, ArrowRight } from "lucide-react";
 import { formatPhone } from "@repo/utils";
 
+function mapColumnTitleToStatus(title: string, index: number): string {
+  const t = title.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  if (t.includes("novo") || t.includes("entrada") || t.includes("lead")) return "new";
+  if (t.includes("contat") || t.includes("conversa") || t.includes("primeiro") || t.includes("atend")) return "contacted";
+  if (t.includes("propost") || t.includes("negoc") || t.includes("envia")) return "proposal_sent";
+  if (t.includes("fechad") || t.includes("convert") || t.includes("ganho") || t.includes("sucesso")) return "converted";
+  if (t.includes("perdid") || t.includes("sem interesse") || t.includes("desist") || t.includes("arquiv")) return "no_interest";
+  
+  if (index === 0) return "new";
+  if (index === 1) return "contacted";
+  if (index === 2) return "proposal_sent";
+  if (index === 3) return "converted";
+  return "no_interest";
+}
+
+function getColumnIdForStatus(status: string, cols: any[]) {
+  const index = cols.findIndex((c, idx) => mapColumnTitleToStatus(c.title, idx) === status);
+  if (index !== -1) return cols[index].id;
+  if (status === "new") return cols[0]?.id;
+  if (status === "contacted") return cols[1]?.id || cols[0]?.id;
+  if (status === "proposal_sent") return cols[2]?.id || cols[0]?.id;
+  if (status === "converted") return cols[3]?.id || cols[0]?.id;
+  return cols[cols.length - 1]?.id;
+}
+
 // Column Component
-function KanbanColumn({ col, leads, onCardClick }: any) {
+function KanbanColumn({ col, leads, onCardClick, onStatusChange }: any) {
   const { setNodeRef } = useDroppable({
     id: col.id
   });
@@ -48,7 +73,7 @@ function KanbanColumn({ col, leads, onCardClick }: any) {
       <div className="flex-1 p-3 overflow-y-auto space-y-3 no-scrollbar min-h-[150px]">
         {leads.length > 0 ? (
           leads.map((l: any) => (
-            <KanbanCard key={l.id} lead={l} onClick={() => onCardClick(l)} />
+            <KanbanCard key={l.id} lead={l} onClick={() => onCardClick(l)} onStatusChange={onStatusChange} />
           ))
         ) : (
           <div className="text-center py-10 text-[11px] text-gray-600 border border-dashed border-[rgba(139,69,212,0.12)] rounded-lg font-medium">
@@ -61,7 +86,7 @@ function KanbanColumn({ col, leads, onCardClick }: any) {
 }
 
 // Card Component
-function KanbanCard({ lead, onClick }: any) {
+function KanbanCard({ lead, onClick, onStatusChange }: any) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: lead.id
   });
@@ -106,6 +131,35 @@ function KanbanCard({ lead, onClick }: any) {
             </span>
           </div>
         )}
+      </div>
+
+      {/* Select Dropdown to update Status directly from card */}
+      <div 
+        onPointerDown={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
+        className="mt-2.5 pt-2.5 border-t border-[rgba(139,69,212,0.08)]"
+      >
+        <select
+          value={lead.status}
+          onChange={(e) => onStatusChange(lead.id, e.target.value)}
+          className={`w-full text-[10px] uppercase tracking-wider px-2 py-1.5 rounded-lg border font-bold outline-none cursor-pointer bg-[#0f0f1a] transition-all ${
+            lead.status === "new"
+              ? "text-[#c084fc] border-[rgba(139,69,212,0.3)] hover:border-[rgba(139,69,212,0.5)]"
+              : lead.status === "contacted"
+                ? "text-[#60a5fa] border-[rgba(59,130,246,0.3)] hover:border-[rgba(59,130,246,0.5)]"
+                : lead.status === "proposal_sent"
+                  ? "text-[#fbbf24] border-[rgba(245,158,11,0.3)] hover:border-[rgba(245,158,11,0.5)]"
+                  : lead.status === "converted"
+                    ? "text-[#4ade80] border-[rgba(34,197,94,0.3)] hover:border-[rgba(34,197,94,0.5)]"
+                    : "text-[#f87171] border-[rgba(239,68,68,0.3)] hover:border-[rgba(239,68,68,0.5)]"
+          }`}
+        >
+          <option value="new">Novo</option>
+          <option value="contacted">Contatado</option>
+          <option value="proposal_sent">Proposta</option>
+          <option value="converted">Convertido</option>
+          <option value="no_interest">Sem interesse</option>
+        </select>
       </div>
     </div>
   );
@@ -201,22 +255,67 @@ export default function KanbanPage() {
     const targetCol = columns.find((c) => c.id === targetColumnId);
     if (!targetCol) return;
 
+    const colIndex = columns.findIndex((c) => c.id === targetColumnId);
+    const newStatus = mapColumnTitleToStatus(targetCol.title, colIndex);
+    const contactedAt = newStatus === "contacted"
+      ? (leadToMove.contacted_at || new Date().toISOString())
+      : (newStatus === "new" ? null : leadToMove.contacted_at);
+
     setLeads(
       leads.map((l) =>
-        l.id === leadId ? { ...l, kanban_column_id: targetColumnId } : l
+        l.id === leadId ? { ...l, kanban_column_id: targetColumnId, status: newStatus, contacted_at: contactedAt } : l
       )
     );
 
     try {
       const { error } = await (supabase.from("user_leads") as any)
         .update({
-          kanban_column_id: targetColumnId
+          kanban_column_id: targetColumnId,
+          status: newStatus,
+          contacted_at: contactedAt
         })
         .eq("id", leadId);
 
       if (error) throw error;
     } catch (err: any) {
       console.error("Erro ao mover card no banco:", err.message);
+    }
+  };
+
+  const handleStatusChange = async (leadId: string, newStatus: string) => {
+    const leadToMove = leads.find((l) => l.id === leadId);
+    if (!leadToMove) return;
+
+    const targetColumnId = getColumnIdForStatus(newStatus, columns);
+    const contactedAt = newStatus === "contacted"
+      ? (leadToMove.contacted_at || new Date().toISOString())
+      : (newStatus === "new" ? null : leadToMove.contacted_at);
+
+    setLeads(
+      leads.map((l) =>
+        l.id === leadId
+          ? {
+              ...l,
+              status: newStatus,
+              kanban_column_id: targetColumnId,
+              contacted_at: contactedAt
+            }
+          : l
+      )
+    );
+
+    try {
+      const { error } = await (supabase.from("user_leads") as any)
+        .update({
+          status: newStatus,
+          kanban_column_id: targetColumnId,
+          contacted_at: contactedAt
+        })
+        .eq("id", leadId);
+
+      if (error) throw error;
+    } catch (err: any) {
+      console.error("Erro ao atualizar status do card:", err.message);
     }
   };
 
@@ -322,26 +421,24 @@ export default function KanbanPage() {
                   col={col}
                   leads={colLeads}
                   onCardClick={handleCardClick}
+                  onStatusChange={handleStatusChange}
                 />
               );
             })}
+
+            <DragOverlay>
+              {activeId ? (
+                <div className="bg-[#141426] border border-[#a855f7]/50 rounded-lg p-4 space-y-3 shadow-glow-md rotate-[2deg] opacity-90 cursor-grabbing">
+                  <div className="flex flex-col space-y-1">
+                    <span className="text-xs font-semibold text-white leading-normal truncate">
+                      {leads.find((l) => l.id === activeId)?.name}
+                    </span>
+                  </div>
+                </div>
+              ) : null}
+            </DragOverlay>
           </DndContext>
         </div>
-
-        {/* Drag overlay */}
-        <DndContext>
-          <DragOverlay>
-            {activeId ? (
-              <div className="bg-[#141426] border border-[#a855f7]/50 rounded-lg p-4 space-y-3 shadow-glow-md rotate-[2deg] opacity-90 cursor-grabbing">
-                <div className="flex flex-col space-y-1">
-                  <span className="text-xs font-semibold text-white leading-normal truncate">
-                    {leads.find((l) => l.id === activeId)?.name}
-                  </span>
-                </div>
-              </div>
-            ) : null}
-          </DragOverlay>
-        </DndContext>
 
         {/* Drawer Detail Sidebar - Slide Panel */}
         {selectedLead && (

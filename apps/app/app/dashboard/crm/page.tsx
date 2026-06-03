@@ -42,8 +42,15 @@ export default function CRMPage() {
   const [editingLead, setEditingLead] = useState<any>(null);
   const [modalLoading, setModalLoading] = useState(false);
 
-  // Derived categories & sources dynamically based on current leads in user's list
-  const categories = Array.from(new Set(leads.map((l: any) => l.category).filter(Boolean))) as string[];
+  // Derived categories & sources dynamically based on current leads in user's list (normalized & sorted)
+  const categories = Array.from(new Set(
+    leads.map((l: any) => {
+      const cat = l.category?.trim();
+      if (!cat) return null;
+      return cat.split(' ').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+    }).filter(Boolean)
+  )).sort() as string[];
+
   const sources = Array.from(new Set(leads.map((l: any) => l.source_type).filter(Boolean))) as string[];
 
   // Excel Import state
@@ -396,7 +403,7 @@ export default function CRMPage() {
       (l.email && l.email.toLowerCase().includes(searchQuery.toLowerCase()));
 
     const matchesStatus = statusFilter === "all" || l.status === statusFilter;
-    const matchesCategory = categoryFilter === "all" || l.category === categoryFilter;
+    const matchesCategory = categoryFilter === "all" || (l.category && l.category.trim().toLowerCase() === categoryFilter.toLowerCase());
     const matchesSource = sourceFilter === "all" || l.source_type === sourceFilter;
 
     return matchesSearch && matchesStatus && matchesCategory && matchesSource;
@@ -481,20 +488,18 @@ export default function CRMPage() {
           </div>
 
           {/* Bottom row: Filters & Sorting (below search) */}
-          <div className="flex flex-wrap items-center justify-between gap-4 pt-2 border-t border-[rgba(255,255,255,0.04)]">
+          <div className="flex flex-wrap items-center justify-between gap-4 pt-2.5 border-t border-[rgba(255,255,255,0.04)]">
             <div className="flex items-center flex-wrap gap-2.5">
-              <span className="text-[10px] text-purple-300 font-bold whitespace-nowrap bg-[rgba(139,69,212,0.06)] border border-[rgba(139,69,212,0.15)] px-2.5 py-1 rounded-lg">
-                {filteredLeads.length} de {leads.length} filtrados
-              </span>
-
+              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Filtrar:</span>
+              
               {/* Filters Selects */}
-              <div className="flex space-x-2 flex-wrap gap-y-2">
+              <div className="flex items-center space-x-2 flex-wrap gap-y-2">
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
-                  className="input h-8 py-0 px-2 text-[11px] w-[115px] font-medium cursor-pointer"
+                  className="input h-8 py-0 px-2 text-[11px] !w-32 font-medium cursor-pointer"
                 >
-                  <option value="all">Status</option>
+                  <option value="all">Todos os Status</option>
                   <option value="new">Novo</option>
                   <option value="contacted">Contatado</option>
                   <option value="proposal_sent">Proposta</option>
@@ -505,7 +510,7 @@ export default function CRMPage() {
                 <select
                   value={categoryFilter}
                   onChange={(e) => setCategoryFilter(e.target.value)}
-                  className="input h-8 py-0 px-2 text-[11px] w-[125px] font-medium cursor-pointer"
+                  className="input h-8 py-0 px-2 text-[11px] !w-36 font-medium cursor-pointer"
                 >
                   <option value="all">Categorias</option>
                   {categories.map((c) => (
@@ -515,6 +520,10 @@ export default function CRMPage() {
                   ))}
                 </select>
               </div>
+
+              <span className="text-[10px] text-purple-300 font-bold whitespace-nowrap bg-[rgba(139,69,212,0.06)] border border-[rgba(139,69,212,0.15)] px-2.5 py-1 rounded-lg ml-1">
+                {filteredLeads.length} de {leads.length} filtrados
+              </span>
             </div>
 
             {/* Sorting */}
@@ -523,7 +532,7 @@ export default function CRMPage() {
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as any)}
-                className="input h-8 py-0 px-2 text-[11px] w-[125px] font-medium cursor-pointer"
+                className="input h-8 py-0 px-2 text-[11px] !w-36 font-medium cursor-pointer"
               >
                 <option value="newest">Mais recentes</option>
                 <option value="oldest">Mais antigos</option>
