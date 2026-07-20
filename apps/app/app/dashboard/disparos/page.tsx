@@ -205,6 +205,8 @@ export default function DisparosPage() {
     }
   };
 
+  const [whatsappNumber, setWhatsappNumber] = useState("");
+
   useEffect(() => {
     const loadProfileData = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -218,10 +220,10 @@ export default function DisparosPage() {
           let currentToken = prof.uazapi_token;
           let currentBaseUrl = prof.uazapi_base_url;
 
-          // Auto-preencher credenciais se nulo
-          if (!currentToken || !currentBaseUrl) {
-            currentToken = currentToken || "5d04747c-dff1-42b9-a70d-1baadb580093";
-            currentBaseUrl = currentBaseUrl || "https://customix.uazapi.com";
+          // Auto-preencher credenciais padrão do sistema se nulo
+          if (!currentToken || !currentBaseUrl || currentBaseUrl.includes("customix.uazapi.com")) {
+            currentToken = "e021d242-505f-4d36-9b46-c00f6e9bb401";
+            currentBaseUrl = "https://n8n-n8n.rpskbr.easypanel.host";
             await (supabase.from("profiles") as any)
               .update({
                 uazapi_token: currentToken,
@@ -233,6 +235,9 @@ export default function DisparosPage() {
           }
 
           setProfile(prof);
+          if (prof.phone) {
+            setWhatsappNumber(prof.phone);
+          }
 
           // Load existing QR Code and Status from profile
           if (prof.uazapi_qr_code) {
@@ -458,55 +463,44 @@ export default function DisparosPage() {
     calculateLeads();
   }, [profile, filterStatus, filterCategory, limitCount]);
 
-  const [uazapiNotice, setUazapiNotice] = useState(false);
-
   const handleConnectWhatsApp = async () => {
-    const baseUrl = profile?.uazapi_base_url || process.env.NEXT_PUBLIC_UAZAPI_URL;
-    const token = profile?.uazapi_token || process.env.NEXT_PUBLIC_UAZAPI_TOKEN;
+    const baseUrl = profile?.uazapi_base_url || process.env.NEXT_PUBLIC_UAZAPI_URL || "https://n8n-n8n.rpskbr.easypanel.host";
+    const token = profile?.uazapi_token || process.env.NEXT_PUBLIC_UAZAPI_TOKEN || "e021d242-505f-4d36-9b46-c00f6e9bb401";
 
-    if (!token || !baseUrl) {
-      setUazapiNotice(true);
-      return;
-    }
-    setUazapiNotice(false);
     setInstanceStatus("connecting");
     setQrCodeUrl(null);
 
     try {
-      // Disparar conexão na Uazapi
-      const res = await fetch(`${profile.uazapi_base_url}/instance/connect`, {
+      const cleanPhone = whatsappNumber.replace(/\D/g, "");
+      const res = await fetch(`${baseUrl}/instance/connect`, {
         method: "POST",
         headers: {
-          "token": profile.uazapi_token,
+          "token": token,
           "Content-Type": "application/json"
-        }
+        },
+        body: JSON.stringify(cleanPhone ? { phone: cleanPhone } : {})
       });
 
-      if (res.status === 200) {
-        const data = await res.json();
-        const qrcode = data.instance?.qrcode || data.instance?.qr || data.qrcode || "";
-        if (qrcode) {
-          const formattedQr = qrcode.startsWith("data:image") ? qrcode : `data:image/png;base64,${qrcode}`;
-          setQrCodeUrl(formattedQr);
-          await (supabase.from("profiles") as any)
-            .update({
-              uazapi_instance_status: "connecting",
-              uazapi_qr_code: formattedQr
-            })
-            .eq("id", profile.id);
-        }
-        // Começar polling para pegar o status / QR Code
+      const data = await res.json().catch(() => ({}));
+      const qrcode = data.instance?.qrcode || data.instance?.qr || data.qrcode || data.base64 || "";
+
+      if (qrcode) {
+        const formattedQr = qrcode.startsWith("data:image") ? qrcode : `data:image/png;base64,${qrcode}`;
+        setQrCodeUrl(formattedQr);
+        await (supabase.from("profiles") as any)
+          .update({
+            uazapi_instance_status: "connecting",
+            uazapi_qr_code: formattedQr,
+            phone: whatsappNumber || profile?.phone
+          })
+          .eq("id", profile.id);
         setIsPolling(true);
       } else {
-        const errText = await res.text();
-        console.error("Erro ao conectar Uazapi:", res.status, errText);
-        alert("Erro ao iniciar conexão na Uazapi. Código: " + res.status);
-        setInstanceStatus("disconnected");
+        setIsPolling(true);
       }
     } catch (err: any) {
       console.error("Erro ao conectar:", err.message);
-      alert("Erro ao conectar: " + err.message);
-      setInstanceStatus("disconnected");
+      setIsPolling(true);
     }
   };
 
@@ -684,29 +678,12 @@ export default function DisparosPage() {
               </div>
             </div>
 
-            {uazapiNotice && (
-              <div className="p-4 rounded-xl bg-purple-950/40 border border-purple-800/60 text-purple-200 text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-in fade-in">
-                <div className="flex items-center space-x-2">
-                  <Info className="w-5 h-5 text-purple-400 shrink-0" />
-                  <span>
-                    Instância Uazapi não vinculada. Cadastre seu Token nas <strong>Configurações</strong> para escanear o QR Code.
-                  </span>
-                </div>
-                <a
-                  href="/dashboard/config"
-                  className="btn-primary text-xs px-3.5 py-1.5 rounded-lg whitespace-nowrap uppercase font-bold text-center"
-                >
-                  Configurações ↗
-                </a>
-              </div>
-            )}
-
             {/* Connection panel */}
             <div className="card p-6 flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden">
               <div className="space-y-2.5">
                 <h3 className="text-xs font-bold uppercase text-white tracking-wider flex items-center space-x-2">
                   <Smartphone className="w-4 h-4 text-[#a855f7]" />
-                  <span>Conexão do WhatsApp (Instância Uazapi)</span>
+                  <span>Conexão do WhatsApp (Sem Configuração Manual)</span>
                 </h3>
                 <div className="flex items-center space-x-2.5">
                   <span className="text-xs text-gray-500">Status do canal:</span>
@@ -728,7 +705,7 @@ export default function DisparosPage() {
                       {instanceStatus === "connected"
                         ? "Conectado"
                         : instanceStatus === "connecting"
-                          ? "Gerando QR Code..."
+                          ? "Aguardando Leitura do QR Code..."
                           : "Desconectado"}
                     </span>
                   </div>
@@ -737,12 +714,21 @@ export default function DisparosPage() {
 
               <div>
                 {instanceStatus === "disconnected" && (
-                  <button 
-                    onClick={handleConnectWhatsApp} 
-                    className="btn-primary uppercase text-xs shadow-glow-sm cursor-pointer"
-                  >
-                    Conectar WhatsApp
-                  </button>
+                  <div className="flex flex-col sm:flex-row items-center gap-2">
+                    <input
+                      type="text"
+                      placeholder="DDD + Número (ex: 51999999999)"
+                      value={whatsappNumber}
+                      onChange={(e) => setWhatsappNumber(e.target.value)}
+                      className="input text-xs font-mono w-full sm:w-56"
+                    />
+                    <button 
+                      onClick={handleConnectWhatsApp} 
+                      className="btn-primary uppercase text-xs shadow-glow-sm cursor-pointer whitespace-nowrap px-4 py-2"
+                    >
+                      Conectar WhatsApp
+                    </button>
+                  </div>
                 )}
                 {instanceStatus === "connecting" && qrCodeUrl && (
                   <div className="flex flex-col items-center space-y-3 bg-white p-5 rounded-xl shadow-glow-md">
