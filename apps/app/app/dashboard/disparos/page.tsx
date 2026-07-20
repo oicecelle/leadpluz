@@ -458,11 +458,17 @@ export default function DisparosPage() {
     calculateLeads();
   }, [profile, filterStatus, filterCategory, limitCount]);
 
+  const [uazapiNotice, setUazapiNotice] = useState(false);
+
   const handleConnectWhatsApp = async () => {
-    if (!profile?.uazapi_token || !profile?.uazapi_base_url) {
-      alert("Credenciais da Uazapi não configuradas.");
+    const baseUrl = profile?.uazapi_base_url || process.env.NEXT_PUBLIC_UAZAPI_URL;
+    const token = profile?.uazapi_token || process.env.NEXT_PUBLIC_UAZAPI_TOKEN;
+
+    if (!token || !baseUrl) {
+      setUazapiNotice(true);
       return;
     }
+    setUazapiNotice(false);
     setInstanceStatus("connecting");
     setQrCodeUrl(null);
 
@@ -677,6 +683,23 @@ export default function DisparosPage() {
                 <strong className="font-bold">Atenção sobre API Não Oficial:</strong> Disparos via conexões não oficiais correm risco de banimento de número do WhatsApp. Recomendamos aquecer o chip e limitar o disparo diário a no máximo 50 mensagens.
               </div>
             </div>
+
+            {uazapiNotice && (
+              <div className="p-4 rounded-xl bg-purple-950/40 border border-purple-800/60 text-purple-200 text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-in fade-in">
+                <div className="flex items-center space-x-2">
+                  <Info className="w-5 h-5 text-purple-400 shrink-0" />
+                  <span>
+                    Instância Uazapi não vinculada. Cadastre seu Token nas <strong>Configurações</strong> para escanear o QR Code.
+                  </span>
+                </div>
+                <a
+                  href="/dashboard/config"
+                  className="btn-primary text-xs px-3.5 py-1.5 rounded-lg whitespace-nowrap uppercase font-bold text-center"
+                >
+                  Configurações ↗
+                </a>
+              </div>
+            )}
 
             {/* Connection panel */}
             <div className="card p-6 flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden">

@@ -201,41 +201,24 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             {/* logo gradient divider */}
             <div className="h-[1px] w-full bg-gradient-to-r from-[#6b2fb5] to-transparent"></div>
 
-            {/* Quota Leads Cycle - clickable */}
+            {/* Unlimited Lifetime Plan badge */}
             <Link
               href="/dashboard/config"
-              className="m-3 p-3 rounded-lg bg-[#0f0f1a]/60 border border-[rgba(139,69,212,0.08)] hover:border-[rgba(139,69,212,0.22)] transition-all duration-150 flex flex-col space-y-1.5 group cursor-pointer block"
+              className="m-3 p-3 rounded-lg bg-[#0f0f1a]/80 border border-[rgba(139,69,212,0.2)] hover:border-[rgba(168,85,247,0.4)] transition-all duration-150 flex items-center justify-between group cursor-pointer block"
             >
-              <div className="flex justify-between text-[10px] uppercase font-bold tracking-wider text-gray-500 group-hover:text-gray-400">
-                <span>Leads este ciclo</span>
-                <span className="text-gray-300 group-hover:text-white font-mono">
-                  {used}/{limit}
-                </span>
+              <div className="flex items-center space-x-2">
+                <div className="w-6 h-6 rounded-md bg-[#6b2fb5]/30 border border-[#8b45d4]/40 flex items-center justify-center text-purple-400 group-hover:text-purple-300">
+                  <Zap className="w-3.5 h-3.5 fill-purple-400/30" />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-white">Plano Vitalício</span>
+                  <span className="text-[9px] font-bold text-emerald-400 flex items-center space-x-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span>Buscas Ilimitadas</span>
+                  </span>
+                </div>
               </div>
-              
-              {/* Progress Bar */}
-              <div className="w-full h-[3px] bg-[#141426] rounded-full overflow-hidden">
-                <div
-                  className={`h-full transition-all duration-300 rounded-full ${
-                    pct >= 95
-                      ? "bg-[#f87171]"
-                      : pct >= 80
-                        ? "bg-[#fbbf24]"
-                        : "bg-gradient-to-r from-[#6b2fb5] to-[#a855f7]"
-                  }`}
-                  style={{ width: `${pct}%` }}
-                ></div>
-              </div>
-
-              {pct >= 95 ? (
-                <span className="text-[9px] text-[#f87171] font-bold block pt-0.5 animate-pulse text-center">
-                  🔴 Limite atingido! Upgrade
-                </span>
-              ) : pct >= 80 ? (
-                <span className="text-[9px] text-[#fbbf24] font-bold block pt-0.5 text-center">
-                  ⚠️ Cota próxima do limite
-                </span>
-              ) : null}
+              <Shield className="w-3.5 h-3.5 text-purple-400/60 group-hover:text-purple-300" />
             </Link>
 
             {/* Nav Section PRINCIPAL */}

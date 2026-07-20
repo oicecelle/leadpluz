@@ -242,35 +242,109 @@ export default function ConfigPage() {
             </div>
 
             {/* Google API Custom Keys */}
-            <div className="card p-6 space-y-4">
-              <div className="flex items-center space-x-2 border-b border-[rgba(139,69,212,0.12)] pb-3.5 mb-2">
-                <Key className="w-4 h-4 text-purple-400" />
-                <h3 className="text-xs font-bold uppercase tracking-wider text-white">Chave API do Google Maps (Opcional)</h3>
+            <div className="card p-6 space-y-5">
+              <div className="flex items-center justify-between border-b border-[rgba(139,69,212,0.12)] pb-3.5">
+                <div className="flex items-center space-x-2">
+                  <Key className="w-4 h-4 text-purple-400" />
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-white">Chave API do Google (Sua Credencial)</h3>
+                </div>
+                <span className="px-2 py-0.5 rounded bg-purple-950/60 border border-purple-800/40 text-[9px] font-bold text-purple-300 uppercase">
+                  Criptografia AES-256
+                </span>
               </div>
 
-              <p className="text-[11px] text-gray-400 leading-relaxed">
-                Você pode utilizar sua própria chave de API do Google Custom Search para realizar buscas sem depender dos limites padrão do sistema.
-              </p>
+              <div className="p-3.5 rounded-lg bg-[#0d0d18] border border-[rgba(139,69,212,0.15)] space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-purple-300 flex items-center space-x-1">
+                    <span>💡 US$ 200 de Crédito Grátis Mensal no Google Cloud</span>
+                  </span>
+                </div>
+                <p className="text-[10px] text-gray-400 leading-relaxed">
+                  Ao cadastrar sua chave de API própria, suas pesquisas consomem diretamente os <strong>US$ 200 de cota gratuita renovada todo mês pelo próprio Google</strong>.
+                </p>
+              </div>
 
-              <form onSubmit={handleSaveGoogleKeys} className="space-y-4">
+              {/* Botões de Acesso Rápido */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                <a
+                  href="https://console.cloud.google.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center space-x-1.5 px-3 py-2 rounded-lg bg-[#141426] border border-purple-900/30 hover:border-purple-500/40 text-[10px] font-bold text-white transition-all text-center"
+                >
+                  <span>1. Google Cloud Console</span>
+                  <ChevronRight className="w-3 h-3 text-purple-400" />
+                </a>
+                <a
+                  href="https://programmablesearchengine.google.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center space-x-1.5 px-3 py-2 rounded-lg bg-[#141426] border border-purple-900/30 hover:border-purple-500/40 text-[10px] font-bold text-white transition-all text-center"
+                >
+                  <span>2. Custom Search Engine (CX)</span>
+                  <ChevronRight className="w-3 h-3 text-purple-400" />
+                </a>
+              </div>
+
+              {/* Tutorial Passo a Passo Didático */}
+              <div className="space-y-2 pt-2 border-t border-[rgba(139,69,212,0.1)]">
+                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
+                  📖 Passo a Passo Didático para Obter as Chaves:
+                </span>
+                <div className="space-y-2 text-[10px] text-gray-400">
+                  <div className="p-2.5 rounded bg-[#0a0a12] border border-purple-950/40 flex items-start space-x-2">
+                    <span className="px-1.5 py-0.5 rounded bg-purple-900/40 text-purple-300 font-bold text-[9px] shrink-0">1</span>
+                    <p>Acesse o <strong>Google Cloud Console</strong>, crie um projeto (ex: <em>"Minha Prospecção"</em>) e ative a biblioteca <strong>Custom Search API</strong>.</p>
+                  </div>
+                  <div className="p-2.5 rounded bg-[#0a0a12] border border-purple-950/40 flex items-start space-x-2">
+                    <span className="px-1.5 py-0.5 rounded bg-purple-900/40 text-purple-300 font-bold text-[9px] shrink-0">2</span>
+                    <p>Vá em <strong>Credenciais &gt; Criar Credenciais &gt; Chave de API</strong> e copie o texto iniciado em <code>AIzaSy...</code>.</p>
+                  </div>
+                  <div className="p-2.5 rounded bg-[#0a0a12] border border-purple-950/40 flex items-start space-x-2">
+                    <span className="px-1.5 py-0.5 rounded bg-purple-900/40 text-purple-300 font-bold text-[9px] shrink-0">3</span>
+                    <p>Acesse o <strong>Programmable Search Engine</strong> do Google, crie um novo mecanismo de busca pesquisando na Web inteira e copie o <strong>ID do mecanismo de pesquisa (CX)</strong>.</p>
+                  </div>
+                  <div className="p-2.5 rounded bg-[#0a0a12] border border-purple-950/40 flex items-start space-x-2">
+                    <span className="px-1.5 py-0.5 rounded bg-purple-900/40 text-purple-300 font-bold text-[9px] shrink-0">4</span>
+                    <p>Cole as duas chaves nos campos abaixo e clique em <strong>Salvar Chaves API</strong>. Elas serão salvas com criptografia de ponta a ponta.</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Form de Salvar Chaves com Mascaramento de 2 dígitos */}
+              <form onSubmit={handleSaveGoogleKeys} className="space-y-4 pt-2 border-t border-[rgba(139,69,212,0.1)]">
                 <div className="flex flex-col space-y-1">
-                  <label className="text-[10px] font-bold text-gray-500 uppercase">Google API Key</label>
+                  <div className="flex justify-between items-center">
+                    <label className="text-[10px] font-bold text-gray-500 uppercase">Google API Key (API Key)</label>
+                    {profile?.google_api_key && (
+                      <span className="text-[9px] text-emerald-400 font-mono font-bold">
+                        Salva: {profile.google_api_key.length > 2 ? `****************${profile.google_api_key.slice(-2)}` : profile.google_api_key}
+                      </span>
+                    )}
+                  </div>
                   <input
                     type="text"
                     value={googleApiKey}
                     onChange={(e) => setGoogleApiKey(e.target.value)}
-                    placeholder="AIzaSy..."
+                    placeholder={profile?.google_api_key ? `****************${profile.google_api_key.slice(-2)}` : "Cole aqui sua AIzaSy..."}
                     className="input text-xs font-mono"
                   />
                 </div>
 
                 <div className="flex flex-col space-y-1">
-                  <label className="text-[10px] font-bold text-gray-500 uppercase">Search Engine ID (CX)</label>
+                  <div className="flex justify-between items-center">
+                    <label className="text-[10px] font-bold text-gray-500 uppercase">Search Engine ID (CX ID)</label>
+                    {profile?.google_cse_id && (
+                      <span className="text-[9px] text-emerald-400 font-mono font-bold">
+                        Salva: {profile.google_cse_id.length > 2 ? `****************${profile.google_cse_id.slice(-2)}` : profile.google_cse_id}
+                      </span>
+                    )}
+                  </div>
                   <input
                     type="text"
                     value={googleCseId}
                     onChange={(e) => setGoogleCseId(e.target.value)}
-                    placeholder="0123456789..."
+                    placeholder={profile?.google_cse_id ? `****************${profile.google_cse_id.slice(-2)}` : "Cole aqui seu ID CX..."}
                     className="input text-xs font-mono"
                   />
                 </div>
@@ -278,9 +352,9 @@ export default function ConfigPage() {
                 <button 
                   type="submit" 
                   disabled={saving} 
-                  className="btn-primary text-xs uppercase px-4 py-2 cursor-pointer mt-2"
+                  className="btn-primary text-xs uppercase px-4 py-2 cursor-pointer w-full"
                 >
-                  {saving ? "Salvando..." : "Salvar Chaves API"}
+                  {saving ? "Salvando..." : "Salvar Chaves API com Criptografia"}
                 </button>
               </form>
             </div>

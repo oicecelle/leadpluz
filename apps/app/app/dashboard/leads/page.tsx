@@ -19,7 +19,8 @@ export default function LeadsSearchPage() {
 
   const [keywords, setKeywords] = useState("");
   const [locations, setLocations] = useState("");
-  const [source, setSource] = useState<"google" | "instagram" | "tiktok">("google");
+  const [source, setSource] = useState<"google">("google");
+  const [maxLeadsRequested, setMaxLeadsRequested] = useState<number>(50);
   
   // Filters
   const [phoneRequired, setPhoneRequired] = useState(false);
@@ -117,8 +118,9 @@ export default function LeadsSearchPage() {
         body: JSON.stringify({
           userId: profile.id,
           keywords: finalKeywords,
-          locations: source === "google" ? (finalLocations.length > 0 ? finalLocations : ["Brasil"]) : ["Brasil"],
-          source,
+          locations: finalLocations.length > 0 ? finalLocations : ["Brasil"],
+          source: "google",
+          maxLeadsRequested,
           filters: {
             phoneRequired,
             emailRequired,
@@ -345,101 +347,101 @@ export default function LeadsSearchPage() {
             {/* Source and Filters row */}
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pt-2">
               
-              {/* Segmented Control - Pill Group */}
+              {/* Fixed Source: Google Maps */}
               <div className="flex items-center space-x-3">
                 <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Origem:</span>
-                <div className="bg-[#141426] p-1 rounded-full border border-[rgba(255,255,255,0.06)] flex space-x-1">
-                  {(["google", "instagram", "tiktok"] as const).map((src) => (
-                    <button
-                      key={src}
-                      type="button"
-                      onClick={() => {
-                        setSource(src);
-                        if (src !== "google") {
-                          setPhoneRequired(false);
-                          setEmailRequired(false);
-                        }
-                      }}
-                      className={`px-4 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wider transition-all duration-150 cursor-pointer ${
-                        source === src
-                          ? "btn-primary shadow-glow-sm"
-                          : "bg-transparent text-gray-400 hover:text-white"
-                      }`}
-                    >
-                      {src === "google" ? "Google Maps" : src === "instagram" ? "Instagram" : "TikTok"}
-                    </button>
-                  ))}
+                <div className="bg-[#141426] px-3.5 py-1.5 rounded-full border border-purple-800/40 flex items-center space-x-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                  <span className="text-xs font-bold text-white uppercase tracking-wider">Google Maps / Web</span>
                 </div>
               </div>
 
-              {/* Checkboxes Customizados */}
-              {source === "google" && (
-                <div className="flex flex-wrap items-center gap-6">
-                  <div 
-                    onClick={() => setPhoneRequired(!phoneRequired)}
-                    className="flex items-center space-x-2.5 cursor-pointer group"
+              {/* Seletor de Quantidade Limite e Checkboxes */}
+              <div className="flex flex-wrap items-center gap-6">
+                
+                {/* Max Leads selector */}
+                <div className="flex items-center space-x-2">
+                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                    Limite da Busca:
+                  </label>
+                  <select
+                    value={maxLeadsRequested}
+                    onChange={(e) => setMaxLeadsRequested(Number(e.target.value))}
+                    className="bg-[#141426] border border-purple-800/40 text-white text-xs font-bold rounded-lg px-3 py-1.5 outline-none focus:border-purple-500 cursor-pointer"
                   >
-                    <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${
-                      phoneRequired 
-                        ? "bg-gradient-to-br from-[#6b2fb5] to-[#a855f7] border-transparent" 
-                        : "border-[rgba(139,69,212,0.3)] bg-transparent group-hover:border-[#8b45d4]"
-                    }`}>
-                      {phoneRequired && <Check className="w-3 h-3 text-white stroke-[3px]" />}
-                    </div>
-                    <span className="text-xs text-gray-300 font-medium">Telefone Obrigatório</span>
+                    <option value={10}>10 Leads</option>
+                    <option value={25}>25 Leads</option>
+                    <option value={50}>50 Leads</option>
+                    <option value={100}>100 Leads</option>
+                    <option value={200}>200 Leads</option>
+                  </select>
+                </div>
+
+                <div 
+                  onClick={() => setPhoneRequired(!phoneRequired)}
+                  className="flex items-center space-x-2.5 cursor-pointer group"
+                >
+                  <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${
+                    phoneRequired 
+                      ? "bg-gradient-to-br from-[#6b2fb5] to-[#a855f7] border-transparent" 
+                      : "border-[rgba(139,69,212,0.3)] bg-transparent group-hover:border-[#8b45d4]"
+                  }`}>
+                    {phoneRequired && <Check className="w-3 h-3 text-white stroke-[3px]" />}
                   </div>
+                  <span className="text-xs text-gray-300 font-medium">Telefone Obrigatório</span>
+                </div>
 
-                  <div 
-                    onClick={() => setEmailRequired(!emailRequired)}
-                    className="flex items-center space-x-2.5 cursor-pointer group"
-                  >
-                    <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${
-                      emailRequired 
-                        ? "bg-gradient-to-br from-[#6b2fb5] to-[#a855f7] border-transparent" 
-                        : "border-[rgba(139,69,212,0.3)] bg-transparent group-hover:border-[#8b45d4]"
-                    }`}>
-                      {emailRequired && <Check className="w-3 h-3 text-white stroke-[3px]" />}
-                    </div>
-                    <span className="text-xs text-gray-300 font-medium">E-mail Obrigatório</span>
+                <div 
+                  onClick={() => setEmailRequired(!emailRequired)}
+                  className="flex items-center space-x-2.5 cursor-pointer group"
+                >
+                  <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${
+                    emailRequired 
+                      ? "bg-gradient-to-br from-[#6b2fb5] to-[#a855f7] border-transparent" 
+                      : "border-[rgba(139,69,212,0.3)] bg-transparent group-hover:border-[#8b45d4]"
+                  }`}>
+                    {emailRequired && <Check className="w-3 h-3 text-white stroke-[3px]" />}
                   </div>
+                  <span className="text-xs text-gray-300 font-medium">E-mail Obrigatório</span>
                 </div>
-              )}
-
-              {/* Filter Warning - appears when phone or email required is checked */}
-              {source === "google" && (phoneRequired || emailRequired) && (
-                <div className="flex items-start space-x-2 text-xs text-[#fbbf24] bg-yellow-950/15 border border-yellow-500/20 px-3.5 py-2 rounded-lg max-w-md animate-in fade-in duration-200 w-full lg:w-auto">
-                  <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                  <span>
-                    Filtro ativo: leads sem
-                    {phoneRequired && emailRequired
-                      ? " telefone e e-mail"
-                      : phoneRequired
-                      ? " telefone"
-                      : " e-mail"}
-                    {" "}não serão exibidos nos resultados.
-                  </span>
-                </div>
-              )}
-
-              {/* Social Warning */}
-              {source !== "google" && (
-                <div className="flex items-center space-x-2 text-xs text-[#fbbf24] bg-yellow-950/15 border border-yellow-500/20 px-3.5 py-2 rounded-lg max-w-md animate-in fade-in duration-200">
-                  <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-                  <span>A busca no Instagram/TikTok retorna o @. Dados de contato não disponíveis.</span>
-                </div>
-              )}
+              </div>
             </div>
+
+            {/* Estimativa de Gastos na API do Google */}
+            <div className="p-3 rounded-lg bg-[#0d0d18] border border-purple-950/40 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+              <div className="flex items-center space-x-2 text-gray-400">
+                <Info className="w-4 h-4 text-purple-400 shrink-0" />
+                <span>
+                  Estimativa nesta busca: <strong className="text-purple-300">~US$ {((maxLeadsRequested / 10) * 0.01).toFixed(2)}</strong>
+                </span>
+              </div>
+              <span className="text-[10px] font-bold text-emerald-400 bg-emerald-950/40 border border-emerald-800/30 px-2.5 py-1 rounded-full text-center">
+                Descontados da sua cota grátis de US$ 200/mês no Google Cloud
+              </span>
+            </div>
+
+            {/* Filter Warning - appears when phone or email required is checked */}
+            {(phoneRequired || emailRequired) && (
+              <div className="flex items-start space-x-2 text-xs text-[#fbbf24] bg-yellow-950/15 border border-yellow-500/20 px-3.5 py-2 rounded-lg max-w-md animate-in fade-in duration-200">
+                <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                <span>
+                  Filtro ativo: leads sem
+                  {phoneRequired && emailRequired
+                    ? " telefone e e-mail"
+                    : phoneRequired
+                    ? " telefone"
+                    : " e-mail"}
+                  {" "}não serão exibidos nos resultados.
+                </span>
+              </div>
+            )}
 
             {/* Aviso informativo e Botão */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pt-3">
-              {source === "google" ? (
-                <div className="flex items-center space-x-2 text-[11px] text-purple-300 bg-[rgba(139,69,212,0.06)] border border-[rgba(139,69,212,0.15)] px-3 py-2 rounded-lg">
-                  <Info className="w-4 h-4 text-[#c084fc] flex-shrink-0" />
-                  <span>Resultados sujeitos à disponibilidade dos dados do Google.</span>
-                </div>
-              ) : (
-                <div className="w-[10px] h-[10px]"></div>
-              )}
+              <div className="flex items-center space-x-2 text-[11px] text-purple-300 bg-[rgba(139,69,212,0.06)] border border-[rgba(139,69,212,0.15)] px-3 py-2 rounded-lg">
+                <Info className="w-4 h-4 text-[#c084fc] flex-shrink-0" />
+                <span>Resultados extraídos da API do Google Custom Search.</span>
+              </div>
               
               <button
                 type="submit"

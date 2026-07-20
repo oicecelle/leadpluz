@@ -262,7 +262,8 @@ export async function POST(request: NextRequest) {
     const userId = user.id;
 
     const body = await request.json();
-    const { keywords, locations, source, filters } = body;
+    const { keywords, locations, source, filters, maxLeadsRequested } = body;
+    const targetLimit = typeof maxLeadsRequested === "number" && maxLeadsRequested > 0 ? maxLeadsRequested : 50;
 
     if (!keywords || keywords.length === 0) {
       return NextResponse.json({ error: "Faltam parâmetros obrigatórios." }, { status: 400 });
@@ -405,12 +406,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ leads: [], limitReached: false, message: msg });
     }
 
-    // 5. Trim to user balance
+    // 5. Trim to requested target limit
     let deliveredLeads = allFoundLeads;
-    let limitReached = false;
-    if (allFoundLeads.length > balance) {
-      deliveredLeads = allFoundLeads.slice(0, balance);
-      limitReached = true;
+    if (allFoundLeads.length > targetLimit) {
+      deliveredLeads = allFoundLeads.slice(0, targetLimit);
     }
 
     // 6. Insert into user_leads
@@ -471,7 +470,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       leads: insertedUserLeads,
-      limitReached,
+      limitReached: allFoundLeads.length > targetLimit,
       addedCount: deliveredLeads.length,
       totalFound: allFoundLeads.length
     });

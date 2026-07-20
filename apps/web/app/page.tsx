@@ -4,6 +4,7 @@ import SocialProofBar from "../components/SocialProofBar";
 import HowItWorksSection from "../components/HowItWorksSection";
 import FeaturesSection from "../components/FeaturesSection";
 import DemoSection from "../components/DemoSection";
+import GoogleApiFeatureSection from "../components/GoogleApiFeatureSection";
 import PricingSection from "../components/PricingSection";
 import FAQSection from "../components/FAQSection";
 import CTASection from "../components/CTASection";
@@ -37,6 +38,9 @@ export default function LandingPage() {
 
       {/* 6. Live Dashboard Simulation and progress metrics */}
       <DemoSection />
+
+      {/* 6.5. Transparência API Google Cloud */}
+      <GoogleApiFeatureSection />
 
       {/* 7. Pricing plans */}
       <PricingSection />
