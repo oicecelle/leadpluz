@@ -95,7 +95,7 @@ export default function LoginPage() {
 
           if (profileError) throw profileError;
 
-          const planStatus = profile?.plan_status || "inactive";
+          const planStatus = profile?.plan_status || "active";
           const isAdmin = profile?.is_admin ? "true" : "false";
 
           document.cookie = `plan-status=${planStatus}; path=/; max-age=86400; SameSite=Lax`;

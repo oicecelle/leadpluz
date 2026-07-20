@@ -14,13 +14,8 @@ export function proxy(request: NextRequest) {
   }
 
   if (token) {
-    const planStatus = request.cookies.get('plan-status')?.value || 'inactive';
+    const planStatus = request.cookies.get('plan-status')?.value || 'active';
     const isAdmin = request.cookies.get('is-admin')?.value === 'true';
-
-    // Users with inactive plans should only be allowed on /planos (or config/billing)
-    if (isDashboardRoute && planStatus !== 'active' && planStatus !== 'trial' && path !== '/dashboard/planos' && !path.startsWith('/dashboard/config')) {
-      return NextResponse.redirect(new URL('/planos', request.url));
-    }
 
     // Protect admin routes
     if (isAdminRoute && !isAdmin) {
