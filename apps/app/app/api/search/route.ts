@@ -270,7 +270,7 @@ export async function POST(request: NextRequest) {
 
     // 2. Get user profile and check leads limit
     const { data: profile, error: profErr } = await (supabase.from("profiles") as any)
-      .select("leads_used_this_cycle, leads_limit")
+      .select("leads_used_this_cycle, leads_limit, google_api_key, google_cse_id")
       .eq("id", userId)
       .maybeSingle();
 
@@ -292,8 +292,8 @@ export async function POST(request: NextRequest) {
     const existingEmails = new Set((existingUserLeads || []).map((l: any) => l.email).filter(Boolean));
 
     const allFoundLeads: any[] = [];
-    const googleApiKey = process.env.GOOGLE_API_KEY;
-    const googleCseId = process.env.GOOGLE_CSE_ID;
+    const googleApiKey = profile?.google_api_key || process.env.GOOGLE_API_KEY;
+    const googleCseId = profile?.google_cse_id || process.env.GOOGLE_CSE_ID;
 
     for (const keyword of keywords) {
       const locList = source === "google" ? (locations && locations.length > 0 ? locations : ["Brasil"]) : ["Social Search"];

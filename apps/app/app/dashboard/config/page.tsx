@@ -13,6 +13,8 @@ export default function ConfigPage() {
   const [name, setName] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
   const [password, setPassword] = useState("");
+  const [googleApiKey, setGoogleApiKey] = useState("");
+  const [googleCseId, setGoogleCseId] = useState("");
   const [saving, setSaving] = useState(false);
 
   // Support Ticket Form
@@ -31,8 +33,10 @@ export default function ConfigPage() {
         setProfile(prof);
 
         if (prof) {
-          setName(prof.name);
+          setName(prof.name || "");
           setAvatarUrl(prof.avatar_url || "");
+          setGoogleApiKey(prof.google_api_key || "");
+          setGoogleCseId(prof.google_cse_id || "");
         }
 
         const { data: ticks } = await (supabase.from("support_tickets") as any)
@@ -45,6 +49,28 @@ export default function ConfigPage() {
     };
     loadProfileData();
   }, []);
+
+  const handleSaveGoogleKeys = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!profile) return;
+    setSaving(true);
+
+    try {
+      const { error } = await (supabase.from("profiles") as any)
+        .update({
+          google_api_key: googleApiKey.trim() || null,
+          google_cse_id: googleCseId.trim() || null,
+        })
+        .eq("id", profile.id);
+
+      if (error) throw error;
+      alert("Chaves da API do Google atualizadas com sucesso!");
+    } catch (err: any) {
+      alert("Erro ao salvar chaves do Google: " + err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -211,6 +237,50 @@ export default function ConfigPage() {
                   className="btn-secondary text-xs uppercase px-4 py-2 cursor-pointer mt-2"
                 >
                   Alterar Senha
+                </button>
+              </form>
+            </div>
+
+            {/* Google API Custom Keys */}
+            <div className="card p-6 space-y-4">
+              <div className="flex items-center space-x-2 border-b border-[rgba(139,69,212,0.12)] pb-3.5 mb-2">
+                <Key className="w-4 h-4 text-purple-400" />
+                <h3 className="text-xs font-bold uppercase tracking-wider text-white">Chave API do Google Maps (Opcional)</h3>
+              </div>
+
+              <p className="text-[11px] text-gray-400 leading-relaxed">
+                Você pode utilizar sua própria chave de API do Google Custom Search para realizar buscas sem depender dos limites padrão do sistema.
+              </p>
+
+              <form onSubmit={handleSaveGoogleKeys} className="space-y-4">
+                <div className="flex flex-col space-y-1">
+                  <label className="text-[10px] font-bold text-gray-500 uppercase">Google API Key</label>
+                  <input
+                    type="text"
+                    value={googleApiKey}
+                    onChange={(e) => setGoogleApiKey(e.target.value)}
+                    placeholder="AIzaSy..."
+                    className="input text-xs font-mono"
+                  />
+                </div>
+
+                <div className="flex flex-col space-y-1">
+                  <label className="text-[10px] font-bold text-gray-500 uppercase">Search Engine ID (CX)</label>
+                  <input
+                    type="text"
+                    value={googleCseId}
+                    onChange={(e) => setGoogleCseId(e.target.value)}
+                    placeholder="0123456789..."
+                    className="input text-xs font-mono"
+                  />
+                </div>
+
+                <button 
+                  type="submit" 
+                  disabled={saving} 
+                  className="btn-primary text-xs uppercase px-4 py-2 cursor-pointer mt-2"
+                >
+                  {saving ? "Salvando..." : "Salvar Chaves API"}
                 </button>
               </form>
             </div>
