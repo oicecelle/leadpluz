@@ -1,76 +1,65 @@
 "use client";
 
+import { motion } from "framer-motion";
 import { useState } from "react";
 import SectionBadge from "./SectionBadge";
 import GradientText from "./GradientText";
 import FAQItem from "./FAQItem";
 
 export default function FAQSection() {
-  const [openIdx, setOpenIdx] = useState<number | null>(null);
+  const [openIndex, setOpenIndex] = useState<number | null>(0);
 
   const faqs = [
     {
-      q: "O que é LEADPLUZ?",
-      a: "LEADPLUZ é uma plataforma SaaS brasileira de prospecção B2B completa. Ela permite buscar contatos locais qualificados, fazer disparos de mensagens automatizados pelo WhatsApp e gerenciar todo o seu funil de vendas em um CRM Kanban simples e intuitivo."
+      question: "O que é a LeadPluz e como ela funciona?",
+      answer: "A LeadPluz é uma plataforma CRM 100% autônoma integrada ao WhatsApp para clínicas de saúde e estética. Ela captura, atende, agenda e gerencia o funil de leads sem que sua equipe precise digitar dados manualmente no sistema."
     },
     {
-      q: "Como funciona a busca de leads?",
-      a: "Você digita uma palavra-chave (ex: \"clínica odontológica\") e uma cidade. O sistema consulta nossa base e o Google, filtrando e retornando apenas os leads com dados de contato válidos, prontos para sua abordagem comercial."
+      question: "Preciso cadastrar meu cartão para testar por 7 dias?",
+      answer: "Não! Você pode criar sua conta e usar a plataforma por 7 dias totalmente grátis, sem necessidade de informar cartão de crédito ou dados bancários."
     },
     {
-      q: "Posso usar meu próprio número de WhatsApp?",
-      a: "Sim. Você conecta seu número diretamente na plataforma via QR code de forma rápida e simples."
+      question: "O que é a LIA e como minha equipe a utiliza?",
+      answer: "A LIA é a assistente de IA interna da sua equipe. Ela funciona diretamente dentro de uma conversa no WhatsApp da clínica e aceita comandos de voz ou texto para criar agendamentos, tarefas, buscar histórico de pacientes e enviar relatórios."
     },
     {
-      q: "Qual a diferença entre API não oficial e API Oficial?",
-      a: "A API não oficial usa seu número pessoal do WhatsApp, sendo mais simples, porém com risco de banimento se usado em excesso (recomendamos no máximo 50 disparos por dia). A API Oficial é homologada pela Meta, livre de riscos de banimento, disponível no plano Ultra."
+      question: "Como funciona a gestão de agenda da clínica?",
+      answer: "A IA cria e gerencia a agenda de forma totalmente autônoma. Se um cliente solicitar reagendamento ou troca de horário no WhatsApp, a própria IA reajusta a vaga e notifica sua equipe."
     },
     {
-      q: "Os leads se renovam todo mês?",
-      a: "Sim. Seu limite de leads reseta automaticamente todo mês na data de aniversário da sua assinatura."
+      question: "Meus dados e os dados dos pacientes ficam seguros?",
+      answer: "Sim. Adotamos o padrão Enterprise de isolamento de dados por conta (Row Level Security — RLS). Cada clínica tem acesso exclusivo às suas informações com criptografia de ponta a ponta."
     },
     {
-      q: "Se eu deletar leads, o saldo volta?",
-      a: "Não. O saldo de cota mensal é consumido no momento da busca, independente do que você fizer com os leads depois."
-    },
-    {
-      q: "Meus dados ficam seguros?",
-      a: "Sim. Cada usuário tem seus dados completamente isolados e protegidos via Row Level Security no banco de dados. Os leads capturados e o histórico de disparos são exclusivos da sua conta."
-    },
-    {
-      q: "Posso cancelar a qualquer momento?",
-      a: "Sim, sem multa e sem fidelidade. O cancelamento pode ser feito de forma imediata na plataforma e seu acesso continua ativo até o fim do período já pago."
+      question: "Como funciona o envio de contratos e documentos?",
+      answer: "A LeadPluz permite enviar termos e contratos diretamente no chat do WhatsApp para assinatura digital com validade jurídica, sem precisar que o paciente instale nada."
     }
   ];
 
-  const handleToggle = (idx: number) => {
-    setOpenIdx(openIdx === idx ? null : idx);
-  };
-
   return (
-    <section id="faq" className="py-24 px-6 md:px-12 bg-[#050508] border-t border-purple-950/20 overflow-hidden">
-      <div className="max-w-4xl mx-auto w-full space-y-16">
+    <section id="faq" className="py-24 px-6 md:px-12 bg-[#050508] border-t border-purple-950/20 overflow-hidden select-none">
+      <div className="max-w-4xl mx-auto w-full space-y-12 text-left">
         
-        {/* Section Header */}
+        {/* Header */}
         <div className="text-center space-y-3">
-          <SectionBadge text="FAQ" />
-          <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight text-white leading-tight">
-            Perguntas <GradientText>frequentes</GradientText>
+          <SectionBadge text="Dúvidas Frequentes" />
+          <h2 className="text-3xl md:text-5xl font-extrabold tracking-tight text-white leading-tight">
+            Perguntas <GradientText>Frequentes</GradientText>
           </h2>
-          <p className="text-sm text-gray-500 max-w-md mx-auto leading-relaxed">
-            Esclareça suas dúvidas rápidas sobre a plataforma e comece a prospectar hoje mesmo.
+          <p className="text-xs md:text-sm text-gray-400 max-w-md mx-auto leading-relaxed">
+            Tudo o que você precisa saber sobre a LeadPluz antes de começar.
           </p>
         </div>
 
-        {/* FAQ List */}
-        <div className="space-y-2 border-t border-purple-950/20">
+        {/* Accordion List */}
+        <div className="space-y-4 pt-4">
           {faqs.map((faq, idx) => (
             <FAQItem
               key={idx}
-              question={faq.q}
-              answer={faq.a}
-              isOpen={openIdx === idx}
-              onToggle={() => handleToggle(idx)}
+              question={faq.question}
+              answer={faq.answer}
+              isOpen={openIndex === idx}
+              onToggle={() => setOpenIndex(openIndex === idx ? null : idx)}
             />
           ))}
         </div>

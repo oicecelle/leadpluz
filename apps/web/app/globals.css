@@ -7,20 +7,21 @@
   --color-purple-800: #4a1a8c;
   --color-purple-750: #5a22a0;
   --color-purple-700: #6b2fb5;
-  --color-purple-600: #7c3fc8;
-  --color-purple-500: #8b45d4;
-  --color-purple-400: #a855f7;
-  --color-purple-300: #c084fc;
-  --color-purple-200: #e9d5ff;
+  --color-purple-600: #8b45d4;
+  --color-purple-500: #a855f7;
+  --color-purple-400: #c084fc;
+  --color-purple-300: #e9d5ff;
+  --color-purple-200: #f3e8ff;
 
-  --color-bg-black: #050508;
-  --color-bg-dark: #0a0a0f;
-  --color-bg-card: #0f0f1a;
-  --color-bg-card-hover: #141426;
+  --color-dark-base: #050508;
+  --color-dark-primary: #0a0a0f;
+  --color-dark-secondary: #0f0f1a;
+  --color-dark-tertiary: #141426;
 
   --font-sans: 'Inter', system-ui, sans-serif;
 
-  --animate-marquee: marquee 25s linear infinite;
+  --animate-marquee: marquee 30s linear infinite;
+  --animate-marquee-slow: marquee 45s linear infinite;
   --animate-float: float 4s ease-in-out infinite;
   --animate-pulse-slow: pulse 4s ease-in-out infinite;
 
@@ -36,9 +37,20 @@
 
 @layer base {
   :root {
+    --purple-900: #1a0533;
+    --purple-800: #2d0a5e;
+    --purple-700: #4a1a8c;
+    --purple-600: #6b2fb5;
+    --purple-500: #8b45d4;
+    --purple-400: #a855f7;
+    --purple-300: #c084fc;
+    --purple-200: #e9d5ff;
+
     --purple-glow: rgba(139, 69, 212, 0.4);
-    --border-subtle: rgba(139, 69, 212, 0.2);
+    --border-subtle: rgba(139, 69, 212, 0.12);
+    --border-default: rgba(139, 69, 212, 0.22);
     --border-bright: rgba(139, 69, 212, 0.5);
+    --text-primary: #f0f0f8;
     --text-gray: #a0a0b8;
     --text-muted: #5a5a7a;
   }
@@ -59,6 +71,10 @@
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+}
+
+.gradient-purple-btn {
+  background: linear-gradient(135deg, #6b2fb5, #a855f7);
 }
 
 .glow-purple {
@@ -87,9 +103,9 @@
 }
 
 .btn-gradient:hover {
-  opacity: 0.9;
+  opacity: 0.92;
   transform: translateY(-1px);
-  box-shadow: 0 8px 30px rgba(139, 69, 212, 0.5);
+  box-shadow: 0 8px 30px rgba(139, 69, 212, 0.45);
 }
 
 .grid-pattern {
@@ -112,3 +128,4 @@
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(139, 69, 212, 0.6);
 }
+
